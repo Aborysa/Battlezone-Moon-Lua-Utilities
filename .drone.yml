@@ -13,7 +13,7 @@ pipeline:
       - luarocks install moonscript
       - mkdir -p /bzmoon/output
       - moonc /bzmoon/src
-      - find /bzmoon/src -name '*.lua' -type f -exec rsync -rv {} /bzmoon/output \;
+      - find /bzmoon/src -name '*.lua' -type f -exec cp {} /bzmoon/output \;
   bundler:
     image: localhost:5000/builder
     when:
