@@ -35,7 +35,7 @@ export GetPathPointCount = GetPathPointCount or (path) ->
   return c
 
 export GetPathPoints = (path) ->
-  return [GetPosition(path,i) for i=0, GetPathPointCount(path)]
+  return [GetPosition(path,i) for i=0, GetPathPointCount(path)-1]
 
 export GetCenterOfPolygon = (vertecies) ->
   center = SetVector(0,0,0)
