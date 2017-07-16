@@ -3,23 +3,16 @@ workspace:
   path: src/${DRONE_REPO_SLUG}
 
 pipeline:
-  moon-builder:
-    image: abaez/luarocks
+  bundler:
+    image: docker.studynator.me/bzone/bztools:latest
     when:
       event:
         - tag
-        
     commands:
       - luarocks install moonscript
       - mkdir -p /bzmoon/output
       - moonc /bzmoon/src
       - find /bzmoon/src -name '*.lua' -type f -exec cp {} /bzmoon/output \;
-  bundler:
-    image: localhost:5000/builder
-    when:
-      event:
-        - tag
-    commands:
       - zip -j -r /bzmoon/output/bundle.zip /bzmoon/output
       - \cp -f /bzmoon/output/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
     volumes:
