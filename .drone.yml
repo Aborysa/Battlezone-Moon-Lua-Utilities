@@ -9,13 +9,14 @@ pipeline:
       event:
         - tag
     commands:
-      - mkdir -p /bzmoon/output
+      - mkdir -p /tmp/bzmoon
       - moonc /bzmoon/src
-      - find /bzmoon/src -name '*.lua' -type f -exec cp {} /bzmoon/output \;
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
-      - mv rx.lus /bzmoon/output \;
-      - zip -j -r /bzmoon/output/bundle.zip /bzmoon/output
-      - \cp -f /bzmoon/output/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
+      - mv rx.lua /tmp/bzmoon \;
+      - find /bzmoon \(-name '*.lua' -o -name '*.squish' \) -type f -exec cp {} /tmp/bzmoon \;
+      - python3 /bztools/luaSquish.py /tmp/bzmoon
+      - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
+      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
     volumes:
       - /root/studynator/nginx-fs/public/bzmoon/:/drone/deploy
 
