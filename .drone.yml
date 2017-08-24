@@ -14,7 +14,8 @@ pipeline:
       - moonc /bzmoon/src
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
       - mv rx.lua /tmp/bzmoon
-      - find /bzmoon -type f \( -name "*.lua" -o -name "*.squish" \) -exec cp {} /tmp/bzmoon \;
+      - find /bzmoon/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
+      - cp /bzmoon/.squish /tmp/bzmoon
       - cp /tmp/bzmoon/* /tmp/bzmoon2
       - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
       - mv /tmp/bzmoon2/* /tmp/bzmoon
