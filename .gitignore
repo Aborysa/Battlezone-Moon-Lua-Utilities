@@ -1,0 +1,6 @@
+src/ncim
+
+dist
+.vscode
+*.log
+*.lua

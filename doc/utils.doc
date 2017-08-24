@@ -1,0 +1,92 @@
+
+
+number GetSimTime()
+  returns simulated time
+
+SimulateTime(dtime: number)
+  inc simulated time by dtime
+
+Vector[] GetPathPoints(path: string)
+  returns a list of vectors coresponding to the position of 
+  each of the path's path points
+
+Vector GetCenterOfPolygon(vertecies: Vector[])
+  returns the center position of a polygon
+
+Vector GetCenterOfPath(path: string)
+  returns the center of a path
+  
+Any[] table.pack(...)
+  returns a list/table containing all the varargs
+  
+Bool isIn = (element: Any, list: Any[])
+  returns true if element is in list, returns false otherwise
+
+Table assignObject = (...: Table)
+  returns a table where each table's properties are being applied to a new table
+  the later tables have higher presidence
+
+Table ommit(table: Table, fields: Any[])
+  returns a new table with the fields listed excluded from the original
+ 
+Table getMeta(obj: Any)
+  returns the metatdata stored for an object
+
+dropMeta(obj: Any)
+  deletes the metadata stored for an object
+
+applyMeta(obj: Any,...: Table[])
+  assignes metadata to an object
+
+
+namespace(name: String,...: Class[])
+  assignes the namespace 'name' to each class
+
+String getFullName(cls: Class)
+  returns the full name of a class
+  in the form "namespace.class_name"
+  
+
+
+Bool instanceof(inst: Instance,cls: Class)
+  returns true if inst is an instance of cls
+
+
+global2Local = (v: Vector,t: Matrix) ->
+  Takes a vector and a matrix and returns a vector
+  with it's local reference frame to the matrix
+
+
+local2Global = (v,t) ->
+  up = SetVector(t.up_x, t.up_y, t.up_z)
+  front = SetVector(t.front_x, t.front_y, t.front_z)
+  right = SetVector(t.right_x, t.right_y, t.right_z)
+  return v.x / front + v.y / up + v.z / right
+
+stringlist = (str) ->
+  m = str\match "%s*([%.%w]+)%s*,?"
+  return unpack([v for v in m])
+
+str2vec = (str) ->
+  m = str\gmatch("%s*(%-?%d*%.?%d*)%a*%s*,?")
+  return SetVector(m(), m(), m())
+
+getHash = (any) ->
+  tonumber {tostring(any)\gsub("%a+: ","")}, 16
+
+
+
+
+
+spawnInFormation(formation: String[], 
+                  location: Vector/String/Matrix, 
+                  direction: Vector, 
+                  unitlist: String[],
+                  team: Number,
+                  seperation: Number)
+
+  spawns units in a formation 
+
+
+createClass(name, methods, parent)
+  creates a class

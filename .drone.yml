@@ -9,10 +9,11 @@ pipeline:
       event:
         - tag
     commands:
-      - luarocks install moonscript
       - mkdir -p /bzmoon/output
       - moonc /bzmoon/src
       - find /bzmoon/src -name '*.lua' -type f -exec cp {} /bzmoon/output \;
+      - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
+      - mv rx.lus /bzmoon/output \;
       - zip -j -r /bzmoon/output/bundle.zip /bzmoon/output
       - \cp -f /bzmoon/output/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
     volumes:

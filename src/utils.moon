@@ -5,14 +5,20 @@ import Subject from Rx
 --Consts
 metadata = setmetatable({},{__mode: "k"})
 
---Util functios
-
-
+--Util functions
 _unpack = unpack
 _GetOdf = GetOdf
+_GetPilotClass  = GetPilotClass
+_GetWeaponClass = GetWeaponClass
 
 export GetOdf = (...) ->
   ( _GetOdf(...) or "" )\gmatch("[^%c]*")()
+
+export GetPilotClass = (...) ->
+  ( _GetPilotClass(...) or "")\gmatch("[^%c]*")()
+
+export GetWeaponClass = (...) ->
+  ( _GetWeaponClass(...) or "")\gmatch("[^%c]*")()
 
 export SetLabel = SetLabel or SettLabel
 
@@ -56,11 +62,12 @@ export GetCenterOfPath = (path) ->
 
 
 table.pack = (...) ->
-  { n: select("#", ...), ... }
+  l = select("#", ...)
+  setmetatable({ __n: l, ... }, {__len: () -> l})
 
 export unpack = (t) ->
-  if(t.n ~= nil)
-    return _unpack(t,1,t.n)
+  if(t.__n ~= nil)
+    return _unpack(t,1,t.__n)
   return _unpack(t)
 
 isIn = (element, list) ->
@@ -71,6 +78,10 @@ isIn = (element, list) ->
 
 assignObject = (...) ->
   return {k,v for obj in *{...} for k, v in pairs(obj) }
+
+ommit = (table, fields) ->
+  t = {k, v for k, v in pairs(assignObject({},table)) when not isIn(k,fields)}
+  
 
 getMeta = (obj) ->
   return {k,v for k,v in pairs(metadata[obj] or {})}
@@ -89,7 +100,7 @@ namespace = (name,...) ->
   return ...
 
 getFullName = (cls) ->
-  "#{getMeta(cls).namespace or ""}.#{cls.__index}"
+  "#{getMeta(cls).namespace or ""}.#{cls.__name}"
 
 
 
@@ -283,11 +294,13 @@ class OdfHeader
   getTable: (var,...) =>
     c = 1
     ret = {}
+    max = @getInt("#{var}Count", 100)
     n = @getProperty("#{var}#{c}",...)
-    while n
+    while n and c < max
       table.insert(ret,n)
       n = @getProperty("#{var}#{c}",...)
-    return ret --GetOdfString(@file,@header,...)
+      c += 1
+    return ret
 
 class OdfFile
   new: (filename) =>
@@ -359,11 +372,104 @@ spawnInFormation = (formation,location,direction,unitlist,team,seperation) ->
 
   return ret
 
+
+class Module
+  new: (parent) =>
+    @submodules = {}
+    @parent = parent
+
+  start: (...) =>
+    proxyCall(@submodules,"start",...)
+
+  update: (...) =>
+    proxyCall(@submodules,"update",...)
+
+  addObject: (...) =>
+    proxyCall(@submodules,"addObject",...)
+
+  createObject: (...) =>
+    proxyCall(@submodules,"createObject",...)
+
+  deleteObject: (...) =>
+    proxyCall(@submodules,"deleteObject",...)
+
+  addPlayer: (...) =>
+    proxyCall(@submodules,"addPlayer",...)
+
+  createPlayer: (...) =>
+    proxyCall(@submodules,"createPlayer",...)
+
+  deletePlayer: (...) =>
+    proxyCall(@submodules,"deletePlayer",...)
+
+  save: (...) =>
+    return proxyCall(@submodules,"save",...)
+
+  load: (...) =>
+    data = ...
+    for i, v in pairs(@submodules)
+      protectedCall(v,"load",unpack(data[i]))
+  
+  gameKey: (...) =>
+    proxyCall(@submodules,"gameKey",...)
+
+  useModule: (cls) =>
+    inst = cls(@)
+    @submodules[getFullName(cls)] = inst
+    return inst
+
+
+
+
+
 spawnInFormation2 = (formation, location, ...) ->
   spawnInFormation(formation, GetPosition(location, 0), GetPosition(location, 1) - GetPosition(location, 0), ...)
 
 
+createClass = (name, methods, parent) ->
+  _class = nil
+  _class = {
+    __init: (...) => 
+      if methods.new
+        methods.new(@,...)
+      elseif _class.__parent
+        _class.__parent.__init(@, ...)
 
+    __base: _base,
+    __name: name,
+    __parent: parent,
+    __inherited: methods.__inherited
+  }
+  _base = ommit(methods,{"new","super"}) or {}
+  _base.__index = _base
+  _base.super = (name,...) =>
+    _class.__parent[name](@,...) 
+  if parent
+    setmetatable(_base, parent.__base)
+
+  _class = setmetatable(_class, {
+    __index: (name) =>
+      val = rawget(_base, name)
+      if val == nil then
+        _parent = rawget(@, "__parent")
+        if _parent then
+          return _parent[name]    
+      else
+        return val
+
+    __call: (...) => 
+      _self = setmetatable({}, _base)
+      @.__init(_self, ...)
+      return _self
+
+  })
+  _base.__class = _class
+  if parent and parent.__inherited then
+     parent.__inherited(parent, _class)
+
+  return _class
+
+namespace("utils", Module, Timer, Area)
 
 {
   :proxyCall,
@@ -384,5 +490,10 @@ spawnInFormation2 = (formation, location, ...) ->
   :spawnInFormation2,
   :namespace,
   :getFullName,
-  :dropMeta
+  :dropMeta,
+  :createClass,
+  :superCall,
+  :superClass,
+  :Module,
+  :instanceof
 }
