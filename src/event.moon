@@ -1,8 +1,8 @@
 utils = require("utils")
-coreM = require("core")
+core = require("core")
 Rx = require("rx")
 
-import Module, core from coreM
+import Module from utils
 import Subject from Rx
 
 class Event
@@ -39,8 +39,9 @@ class EventDispatcher
 
 
 class EventDispatcherModule extends Module
-  new: () =>
-    @dispatcher = EventDispatcher
+  new: (...) =>
+    super(...)
+    @dispatcher = EventDispatcher()
   
   getDispatcher: () =>
     @dispatcher
@@ -70,7 +71,7 @@ class EventDispatcherModule extends Module
     @dispatcher\dispatch(Event("DELETE_PLAYER",nil,nil,...))
 
   gameKey: (...) =>
-    proxyCall(@submodules,"gameKey",...)
+    super\gameKey(...)
     @dispatcher\dispatch(Event("GAME_KEY",nil,nil,...))
 
 
