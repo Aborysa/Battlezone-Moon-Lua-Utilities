@@ -16,7 +16,7 @@ pipeline:
       - mv rx.lua /tmp/bzmoon
       - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
       - cp /bzmoon/repo/.squish /tmp/bzmoon
-      - cp -r /tmp/bzmoon/* /tmp/bzmoon2/
+      - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
       - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
       - mv /tmp/bzmoon2/* /tmp/bzmoon
       - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
