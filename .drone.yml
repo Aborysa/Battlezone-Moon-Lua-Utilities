@@ -13,7 +13,7 @@ pipeline:
       - moonc /bzmoon/src
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
       - mv rx.lua /tmp/bzmoon
-      - find /bzmoon \(-name '*.lua' -o -name '*.squish' \) -type f -exec cp {} /tmp/bzmoon \;
+      - find /bzmoon -type f \( -name "*.lua" -o -name "*.squish" \) -exec cp {} /tmp/bzmoon \;
       - python3 /bztools/luaSquish.py /tmp/bzmoon
       - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
       - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
