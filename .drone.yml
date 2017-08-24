@@ -1,6 +1,6 @@
 workspace:
   base: /bzmoon
-  path: src/${DRONE_REPO_SLUG}
+  path: ${DRONE_REPO_SLUG}
 
 pipeline:
   bundler:
@@ -10,11 +10,14 @@ pipeline:
         - tag
     commands:
       - mkdir -p /tmp/bzmoon
+      - mkdir -p /tmp/bzmoon2
       - moonc /bzmoon/src
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
       - mv rx.lua /tmp/bzmoon
       - find /bzmoon -type f \( -name "*.lua" -o -name "*.squish" \) -exec cp {} /tmp/bzmoon \;
-      - python3 /bztools/luaSquish.py /tmp/bzmoon
+      - cp /tmp/bzmoon/* /tmp/bzmoon2
+      - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
+      - mv /tmp/bzmoon2/* /tmp/bzmoon
       - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
       - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
     volumes:
