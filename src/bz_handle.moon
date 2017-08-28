@@ -3,7 +3,7 @@ utils = require("utils")
 rx = require("rx")
 
 import OdfFile from utils
-import Subject from rx
+import Subject, AsyncSubject from rx
 
 
 copyObject = (handle, odf, team, location, keepWeapons=false, kill=false, fraction=true) ->
@@ -464,9 +464,11 @@ class ObjectTracker
       health: "getHealth",
       position: "getPosition"
     }
+    @destroySubject = AsyncSubject.create()
     @lvars = {i, @handle![v](@handle!) for i,v in pairs(@track)}
     @subjects = {i, Subject.create() for i,v in pairs(@track)}
-  
+    @onChange("health")\subscribe(@\_checkHp)
+    @dead = false
 
   update: () =>
     for i,v in pairs(@track)
@@ -475,11 +477,20 @@ class ObjectTracker
       if(@lvars[i] ~= c)
         @subjects[i]\onNext(@lvars[i],c)
 
+  _checkHp: (new, old) =>
+    if not @dead and (new <= 0 and old > 0)
+      @dead = true
+      @destroySubject\onNext()
+      @destroySubject\onCompleted()
+
   handle: () =>
     return @h
   
   onChange: (name) =>
     return @subjects[name]
+
+  onDestroy: () =>
+    return @destroySubject
 
   doTrack: (name,func) =>
     @track[name] = @track[name] or func

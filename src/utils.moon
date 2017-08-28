@@ -82,6 +82,8 @@ assignObject = (...) ->
 ommit = (table, fields) ->
   t = {k, v for k, v in pairs(assignObject({},table)) when not isIn(k,fields)}
   
+isNullPos = (pos) ->
+  return pos.x == pos.y and pos.y == pos.z and pos.z == 0
 
 getMeta = (obj) ->
   return {k,v for k,v in pairs(metadata[obj] or {})}
@@ -495,5 +497,6 @@ namespace("utils", Module, Timer, Area)
   :superCall,
   :superClass,
   :Module,
-  :instanceof
+  :instanceof,
+  :isNullPos
 }
