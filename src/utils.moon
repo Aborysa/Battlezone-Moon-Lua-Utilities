@@ -22,6 +22,7 @@ export GetWeaponClass = (...) ->
 
 export SetLabel = SetLabel or SettLabel
 
+
 simulatedTime = 0
 
 export GetSimTime = () ->

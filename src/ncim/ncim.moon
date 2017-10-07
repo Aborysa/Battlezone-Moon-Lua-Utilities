@@ -6,7 +6,7 @@ component = bzutils.component
 
 bz_handle = bzutils.bz_handle
 
-import namespace, isIn, assignObject, proxyCall, isNullPos from utils
+import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
 import UnitComponent, ComponentConfig, componentManager from component
 
 import ObjectTracker, Handle from bz_handle

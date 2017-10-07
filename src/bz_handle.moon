@@ -195,7 +195,7 @@ class Handle
   getOmega: () =>
     return GetOmega(@getHandle!)
   
-  SetOmega: (...) =>
+  setOmega: (...) =>
     SetOmega(@getHandle!, ...)
   
   getWhoShotMe: (...) =>
