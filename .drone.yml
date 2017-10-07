@@ -21,6 +21,7 @@ pipeline:
       - mv /tmp/bzmoon2/* /tmp/bzmoon
       - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
       - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
+      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_latest.zip || true
     volumes:
       - /root/studynator/nginx-fs/public/bzmoon/:/drone/deploy
 
