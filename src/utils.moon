@@ -1,6 +1,6 @@
 Rx = require("rx")
 
-import Subject from Rx
+import Subject, ReplaySubject from Rx
 
 --Consts
 metadata = setmetatable({},{__mode: "k"})
@@ -10,6 +10,19 @@ _unpack = unpack
 _GetOdf = GetOdf
 _GetPilotClass  = GetPilotClass
 _GetWeaponClass = GetWeaponClass
+
+
+_BuildObject = BuildObject
+
+if IsNetGame()
+  export BuildObject = (...) ->
+    h = _BuildObject(...)
+    SetLocal(h)
+    return h
+
+-- Builds locally no matter what
+export BuildLocal = (...) ->
+  _BuildObject(...)
 
 export GetOdf = (...) ->
   ( _GetOdf(...) or "" )\gmatch("[^%c]*")()
@@ -21,6 +34,7 @@ export GetWeaponClass = (...) ->
   ( _GetWeaponClass(...) or "")\gmatch("[^%c]*")()
 
 export SetLabel = SetLabel or SettLabel
+
 
 
 simulatedTime = 0
@@ -66,10 +80,10 @@ table.pack = (...) ->
   l = select("#", ...)
   setmetatable({ __n: l, ... }, {__len: () -> l})
 
-export unpack = (t) ->
+export unpack = (t,...) ->
   if(t.__n ~= nil)
     return _unpack(t,1,t.__n)
-  return _unpack(t)
+  return _unpack(t,...)
 
 isIn = (element, list) ->
   for e in *list
@@ -151,6 +165,25 @@ getHash = (any) ->
 
 --Util classes
 
+
+class Store
+  new: (initial_state) =>
+    @state = initial_state
+    @updateSubject = ReplaySubject.create(1)
+
+  set: (key, value) =>
+    @assign({key: value})
+
+  assign: (kv_pairs) =>
+    p_state = @start
+    @state = assignObject(@state, kv_pairs)
+    @updateSubject\onNext(@state, p_state)
+
+  getState: () =>
+    @state
+
+  onStateUpdate: () =>
+    @updateSubject
 
 --loop = -1, loop infinite times
 class Timer
@@ -414,7 +447,13 @@ class Module
       protectedCall(v,"load",unpack(data[i]))
   
   gameKey: (...) =>
-    proxyCall(@submodules,"gameKey",...)
+    proxyCall(@submodules,"gameKey", ...)
+
+  receive: (...) => 
+    proxyCall(@submodules,"receive", ...)
+
+  command: (...) =>
+    proxyCall(@submodules,"command", ...) 
 
   useModule: (cls) =>
     inst = cls(@)
@@ -499,5 +538,6 @@ namespace("utils", Module, Timer, Area)
   :superClass,
   :Module,
   :instanceof,
-  :isNullPos
+  :isNullPos,
+  :Store
 }

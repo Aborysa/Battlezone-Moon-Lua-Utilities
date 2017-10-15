@@ -53,7 +53,7 @@ class PathFinder extends BzObject
   done: () =>
     if(not @finished)
       @finished = true
-      @sub\onComplete()
+      @sub\onCompleted()
       super\handle()\removeObject()
 
 

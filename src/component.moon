@@ -2,11 +2,10 @@
 -- constructed/init - called on init
 -- postInit - called after init/constructor and load
 -- unitDidSpawn - called when/if the component spawns
--- unitWasRemoved - called when the component is removed, runs on all machines in mp
+-- unitWasRemoved - called when the component is removed
 -- unitWillTransfere
 -- unitDidTransfere - might not use this 
--- update - runs on local machine in mp
--- remoteUpdate - runs on remote machines in mp
+-- update - runs ~every update
 
 
 --UnitBehaviour:
@@ -20,8 +19,11 @@
 utils = require("utils")
 bz_handle = require("bz_handle")
 core = require("core")
+net = require("net").net
 
+rx = require("rx")
 
+import Observable from rx
 import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName from utils
 import Handle from bz_handle
 
@@ -32,6 +34,7 @@ ComponentConfig = (cls,cfg) ->
       odfs: {},
       classLabels: {},
       componentName: "",
+      remoteCls: false,
       customTest: () -> return false
     },cfg) 
   })
@@ -72,7 +75,7 @@ class ComponentManager extends Module
   new: (parent) =>
     super(parent)
     @classes = {}
-    @objbyclass = {}
+    --@objbyclass = {}
     @objbyhandle = {}
     @remoteHandles = {}
     @waitToAdd = {}
@@ -95,11 +98,32 @@ class ComponentManager extends Module
       @_regHandle(i)
 
     for i,v in pairs(@objbyhandle)
-      if(not @remoteHandles[i])
-        proxyCall(v,"update",...)
-      else
-        proxyCall(v,"remoteUpdate",...)
-    
+      --if(not @remoteHandles[i])
+      if IsValid(i)
+        -- objects locality has changed
+      
+        if (@remoteHandles[i] ~= nil) ~= (IsRemote(i) or not IsLocal(i)) 
+          rem = IsRemote(i)
+          @remoteHandles[i] = rem
+          proxyCall(v, "unitWillTransfere")
+          @objbyhandle[i] = {}
+          for obj in *v
+            m = getMeta(obj)
+            cname = getFullName(m.parent)
+            if ObjCfg(m.parent).remoteCls
+              cls = rem and @classes[cname]
+              inst = @createInstance(i,cls)
+              protectedCall(inst, "load", protectedCall(obj, "save"))
+              protectedCall(inst, "postInit")
+            else
+              table.insert(@objbyhandle, obj)
+
+      v = @objbyhandle[i]
+      
+      proxyCall(v,"update",...)
+      --else
+        --print("Invalid", i)
+
   addObject: (handle,...) =>
     super\addObject(handle)
     @_regHandle(handle)
@@ -124,7 +148,7 @@ class ComponentManager extends Module
 
   useClass: (cls) =>
     @classes[getFullName(cls)] = cls
-    @objbyclass[cls] = setmetatable({},{__mode: "v"})
+    --@objbyclass[cls] = setmetatable({},{__mode: "v"})
 
   addHandle: (handle) =>
     if @objbyhandle[handle]
@@ -147,12 +171,30 @@ class ComponentManager extends Module
     return ret
 
   createInstance: (handle,cls) =>
-    instance = cls(handle)
-    table.insert(@objbyclass[cls],instance)
-    @objbyhandle[handle] = @objbyhandle[handle] or {}
-    table.insert(@objbyhandle[handle],instance)
+    c = ObjCfg(cls)
+    instance = nil
+
+
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
+      if (c.remoteCls)
+        print("Creating remote instance")
+        socketSub = net\getRemoteSocket("OBJ",handle,getFullName(cls))
+        instance = c.remoteCls(handle, socketSub)
+      else
+        --a bit hacky
+        instance = {}
+    else
+      socketSub = nil
+      if (IsNetGame() and c.remoteCls)
+        socketSub = Observable.of(net\openSocket(0,"OBJ",handle,getFullName(cls)))
+      instance = cls(handle, socketSub)
+    --table.insert(@objbyclass[cls],instance)
+    applyMeta(instance,{
+      parent: cls
+    })
+    @objbyhandle[handle] = @objbyhandle[handle] or {}
+    table.insert(@objbyhandle[handle],instance)
     return instance
 
     
@@ -162,13 +204,13 @@ class ComponentManager extends Module
     if objs
       proxyCall(objs,"unitWasRemoved")
       
-  
   save: (...) =>
     componentData = {}
     for i, v in pairs(@objbyhandle)
-      componentData[i] = componentData[i] or {}
-      for obj in *v
-        componentData[i][getFullName(obj.__class)] = table.pack(obj\save()) 
+      --componentData[i] = componentData[i] or {}
+      componentData[i] = {getFullName(obj.__class), table.pack(protectedCall(obj, "save")) for obj in *v}
+      --for obj in *v
+      --  componentData[i][getFullName(obj.__class)] = table.pack(obj\save()) 
 
     return {
       mdata: super\save(...)

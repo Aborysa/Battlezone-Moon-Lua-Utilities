@@ -128,11 +128,7 @@ class ReactorHealthy extends UnitComponent
     h = @getHandle!
     @settings = {
       damagedOdf: h\getProperty("ReactorClass", "damagedReactor"),
-      criticalHp: h\getFloat("ReactorClass", "criticalHealth", 0.1),
-      meltdownTimer: h\getFloat("ReactorClass", "meltdown", 0),
-      radiationRange: h\getFloat("ReactorClass", "radiationRange", 0),
-      radiationIntensity: h\getFloat("ReactorClass", "radiationIntensity", 0),
-      daywreckerObject: h\getProperty("ReactorClass", "daywreckerObject")
+      criticalHp: h\getFloat("ReactorClass", "criticalHealth", 0.1)
     }
     @tracker = ObjectTracker(handle)
     @sub = {
@@ -162,69 +158,93 @@ class ReactorHealthy extends UnitComponent
   unitWasRemoved: () =>
     proxyCall(@sub,"unsubscribe")
 
-class ReactorDamaged extends UnitComponent
-  new: (handle) =>
+class ReactorDamagedRemote extends UnitComponent
+  new: (handle, socketSub) =>
     super(handle)
     h = @getHandle!
-    @settings = {
-      criticalHp: h\getHealth!,
-      meltdownTimer: 0,
-      radiationRange: 0,
-      radiationIntensity: 0
-    }
+
     @tracker = ObjectTracker(handle)
     @sub = {
-      @tracker\onDestroy()\subscribe(@\boom),
-      @tracker\onChange("health")\subscribe(@\_checkHealth),
-      @tracker\onChange("position")\subscribe(@\_posChange)
+      @tracker\onChange("position")\subscribe(@\_posChange),
+      @tracker\onDestroy()\subscribe(@\boom)
+    }
+
+    @settings = {
+      criticalHp: h\getHealth!,
+      meltdownTimer: h\getFloat("ReactorClass", "meltdown", 0),
+      radiationRange: h\getFloat("ReactorClass", "radiationRange", 0),
+      radiationIntensity: h\getFloat("ReactorClass", "radiationIntensity", 0),
+      daywreckerObject: h\getProperty("ReactorClass", "daywreckerObject")
     }
     @pos = h\getPosition!
+    if socketSub
+      socketSub\subscribe(@\_setSocket)
 
-  _checkHealth: (new, old) =>
-    h = @getHandle!
-    if new > @settings.criticalHp and @settings.healthyOdf
-      healthyHandle = h\copyObject(@settings.healthyOdf)
-      h\removeObject!
-  
-  _posChange: (new, old) =>
-    if(not isNullPos(new))
-      @pos = new
+  _setSocket: (socket) =>
+    @socket = socket
 
   boom: () =>
     h = @getHandle!
     if(@settings.daywreckerObject)
-      BuildObject(@settings.daywreckerObject,h\getTeamNum(),@pos)
+      BuildLocal(@settings.daywreckerObject,h\getTeamNum(),@pos)
 
   setSettings: (settings, pos) =>
     @settings = assignObject(@settings, settings)
     @pos = pos or @pos
 
   update: (dtime) =>
+    h = @getHandle!
     @tracker\update(dtime)
-    h = @getHandle!
-    @remoteUpdate(dtime)
-
     @settings.meltdownTimer -= dtime
-    if @settings.meltdownTimer <= 0
-      h\damage(h\getCurHealth!)
-
-  remoteUpdate: (dtime) =>
-    h = @getHandle!
     for v in ObjectsInRange(@settings.radiationRange+25, h.handle)
       d = Length(h\getPosition()-GetPosition(v))
       powerup = isIn(GetClassLabel(v),{"ammopack","repairkit","daywrecker","wpnpower","camerapod"})
       if((not powerup) and (v != h.handle) and d <= @settings.radiationRange)
         damage = (@settings.radiationIntensity/math.pow(math.max(d/100,1), 3))*dtime
         Damage(v, damage)
-    
-  unitWasRemoved: () =>
-    proxyCall(@sub,"unsubscribe")
 
   save: () =>
     return @settings
 
   load: (settings) =>
     @settings = settings
+
+
+  _posChange: (new, old) =>
+    if(not isNullPos(new))
+      @pos = new
+
+
+  unitWasRemoved: () =>
+    print("Unit was removed")
+    proxyCall(@sub,"unsubscribe")
+    if @socket
+      @socket\close()
+
+class ReactorDamaged extends ReactorDamagedRemote
+  new: (handle, socketSub) =>
+    super(handle, socketSub)
+    h = @getHandle!
+    table.insert(@sub,@tracker\onChange("health")\subscribe(@\_checkHealth)) 
+    --table.insert(@sub,@tracker\onDestroy()\subscribe(@\boom))
+    
+  _checkHealth: (new, old) =>
+    print(new, old)
+    h = @getHandle!
+    if new > @settings.criticalHp and @settings.healthyOdf
+      healthyHandle = h\copyObject(@settings.healthyOdf)
+      h\removeObject!
+  
+
+
+  update: (dtime) =>
+    super(dtime)
+    h = @getHandle!
+
+    if @settings.meltdownTimer <= 0
+      h\damage(h\getCurHealth!)
+
+
 
 
 ComponentConfig(Turret,{
@@ -240,7 +260,8 @@ ComponentConfig(ReactorHealthy,{
 })
 
 ComponentConfig(ReactorDamaged,{
-  componentName: "ncim.ReactorDamaged"
+  componentName: "ncim.ReactorDamaged",
+  remoteCls: ReactorDamagedRemote
 })
 
 
