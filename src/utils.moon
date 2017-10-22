@@ -35,6 +35,8 @@ export GetWeaponClass = (...) ->
 
 export SetLabel = SetLabel or SettLabel
 
+export IsFriend = (a, b) ->
+  IsTeamAllied(a, b) or a == b
 
 
 simulatedTime = 0
@@ -97,6 +99,12 @@ assignObject = (...) ->
 ommit = (table, fields) ->
   t = {k, v for k, v in pairs(assignObject({},table)) when not isIn(k,fields)}
   
+
+compareTables = (a, b) ->
+  {k, v for k, v in pairs(assignObject(a,b)) when a[k] ~= b[k]}
+  
+
+
 isNullPos = (pos) ->
   return pos.x == pos.y and pos.y == pos.z and pos.z == 0
 
@@ -168,15 +176,18 @@ getHash = (any) ->
 
 class Store
   new: (initial_state) =>
-    @state = initial_state
+    @state = initial_state or {}
     @updateSubject = ReplaySubject.create(1)
+    @keyUpdateSubject = Subject.create()
 
   set: (key, value) =>
-    @assign({key: value})
+    @assign({[key]: value})
 
   assign: (kv_pairs) =>
-    p_state = @start
+    p_state = @state
     @state = assignObject(@state, kv_pairs)
+    for k, v in pairs(compareTables(p_state, kv_pairs))
+      @keyUpdateSubject\onNext(k,v)
     @updateSubject\onNext(@state, p_state)
 
   getState: () =>
@@ -184,6 +195,9 @@ class Store
 
   onStateUpdate: () =>
     @updateSubject
+
+  onKeyUpdate: () =>
+    @keyUpdateSubject
 
 --loop = -1, loop infinite times
 class Timer
@@ -512,6 +526,7 @@ createClass = (name, methods, parent) ->
   return _class
 
 namespace("utils", Module, Timer, Area)
+
 
 {
   :proxyCall,

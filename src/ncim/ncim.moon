@@ -6,9 +6,11 @@ component = bzutils.component
 
 bz_handle = bzutils.bz_handle
 
-import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
-import UnitComponent, ComponentConfig, componentManager from component
+rx = require("rx")
 
+import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
+import UnitComponent, SyncedUnitComponent, ComponentConfig, componentManager from component
+import Observable, AsyncSubject from rx
 import ObjectTracker, Handle from bz_handle
 
 Turret = nil
@@ -19,53 +21,132 @@ ReactorDamaged = nil
 
 
 class TurretTower extends UnitComponent
-  new: (handle) =>
-    super(handle)
+  new: (handle, socketSub) =>
+    super(handle, socketSub)
     
+    @req = nil
     @setState({
       turret: false
     })
+    
+
+    if socketSub
+      socketSub\subscribe((socket) ->
+        print("Got socket")
+        @socket = socket
+        socket\onReceive()\subscribe(@\receive)
+        socket\onConnect()\subscribe(() -> @socket\send("SET_TURR", @state!.turret))
+      )
+
+
+  receive: (what, who) =>
+    if what == "REQ_TOWER"
+      if not @hasTurret()
+        --going to assume the unit is running on this machine
+        @setTurret(who)
+      elseif not IsAlive(who)
+        @setTurret(false)
+      @socket\send("SET_TURR", @state!.turret)
+
+    elseif what == "SET_TURR"
+      if @req ~= nil
+        @req.sub\onNext({@getHandle()\getHandle(),who})
+        @req.sub\onCompleted()
+        @req = nil
+      @setState({
+        turret: who
+      })
 
   setTurret: (turret) =>
-    @setState({
-      turret: turret
-    })
+    print("set turret",turret)
+    if IsNetGame() and @getHandle()\isRemote()
+      if @req==nil and @socket~=nil
+        @req = {
+          sub: AsyncSubject.create(),
+          turret: turret
+        }
+        @socket\send("REQ_TOWER", turret)
+        return @req.sub
+       
+      else
+        return Observable.of({@getHandle()\getHandle(),@state!.turret})
+    else
+      @setState({
+        turret: turret
+      })
+      if @socket~=nil
+        @socket\send("SET_TURR", turret)
 
-  unitWasRemoved: () =>
-    if(IsValid(@state!.turret))
-      t = componentManager\getComponent(@state!.turret, Turret)
-      t and t\_setTower(false)
+      return Observable.of({@getHandle().handle,turret})
+
 
   hasTurret: () =>
     return IsAlive(@state!.turret)
 
 
-class Turret extends UnitComponent
-  new: (handle) =>
-    super(handle)
-    @tracker = ObjectTracker(handle)
-    @tracker\onChange("command")\subscribe(@\_commandChanged)
-    @tracker\onChange("who")\subscribe(@\_whoChange)
+class RemoteTurret extends SyncedUnitComponent
+  new: (handle, socketSub) =>
+    super(handle, socketSub)
     @setState({
       turretTower: false,
       deployed: false
     })
+    @getHandle()\setObjectiveOn()
+
+  postInit: () =>
+    @getHandle()\setObjectiveName("Deployed" and @state().deployed or "Not Deployed")
+    @getStore()\onKeyUpdate()\subscribe((key, value) ->
+      if key == "deployed"
+        @getHandle()\setObjectiveName(value and "Deployed" or "Not Deployed")
+    )
+
+class Turret extends RemoteTurret
+  new: (handle, socketSub) =>
+    super(handle, socketSub)
+    @tracker = ObjectTracker(handle)
+    @tracker\onChange("command")\subscribe(@\_commandChanged)
+    @tracker\onChange("who")\subscribe(@\_whoChange)
+
+
+  _subToTower: (s) =>
+    print("sub to tower")
+    if @sub
+      @sub\unsubscribe()
+    @sub = s\subscribe((a) ->
+      tower, turr = unpack(a)
+      t = false
+      if turr == @getHandle!.handle
+        t = tower
+        @handle\goto(t,0)
+      @setState({
+        turretTower: t,
+        deployed: false
+      })
+    )
 
   _setTower: (tower) =>
+    print("_set tower", tower)
+    ret = Observable.of({false})
     if(IsValid(@state!.turretTower))
       t = componentManager\getComponent(@state!.turretTower, TurretTower) 
-      t and t\setTurret(false)
+      if t
+        ret = t\setTurret({false})
 
     if(IsValid(tower))
+      print("Getting component of tower")
       t = componentManager\getComponent(tower, TurretTower) 
-      t and t\setTurret(@getHandle!.handle)
-    print(tower, @getHandle!\isDeployed!)
+      if t
+        print("Has component", tower, t, t\hasTurret())
+        print(@getHandle!,@getHandle!.handle)
+        print("FALSE:",t\setTurret(false))
+        ret = t\setTurret(@getHandle!.handle)
+        print("Still here!")
     if((not tower) and @getHandle!\isDeployed!)
       @getHandle!\deploy!
-    @setState({
-      turretTower: tower,
-      deployed: false
-    })
+
+    @_subToTower(ret)
+    return ret
+
 
   _whoChange: (new, old) =>
     @_commandOrWhoChanged(@getHandle!\getCurrentCommand!, new)
@@ -78,9 +159,9 @@ class Turret extends UnitComponent
       team = GetTeamNum(who)
       turretTower = componentManager\getComponent(who, TurretTower)
       _ref = IsValid(@state!.turretTower) and componentManager\getComponent(@state!.turretTower, TurretTower)
-      if(turretTower and (team == @getHandle!\getTeamNum!) and not turretTower\hasTurret())
+      print(turretTower, IsFriend(team,@getHandle!\getTeamNum!),not turretTower\hasTurret())
+      if(turretTower and IsFriend(team,@getHandle!\getTeamNum!) and not turretTower\hasTurret())
         @_setTower(who)
-        @handle\goto(who,0)
       elseif(_ref and turretTower != _ref)
         @_setTower(false)
 
@@ -107,7 +188,6 @@ class Turret extends UnitComponent
         @getHandle!\setCurAmmo(@getHandle!\getMaxAmmo!)
       
       if((not @getHandle!\isAliveAndPilot! and @getHandle!\isDeployed!) or (not @getHandle!\isDeployed! and @getHandle!.handle == GetPlayerHandle!))
-        print("Setting tower to false")
         @_setTower(false)
     elseif((@getHandle!.handle == GetPlayerHandle!) and @getHandle!\isDeployed!)
       for v in ObjectsInRange(25, @getHandle!.handle)
@@ -159,7 +239,7 @@ class ReactorHealthy extends UnitComponent
     proxyCall(@sub,"unsubscribe")
 
 class ReactorDamagedRemote extends UnitComponent
-  new: (handle, socketSub) =>
+  new: (handle) =>
     super(handle)
     h = @getHandle!
 
@@ -177,11 +257,8 @@ class ReactorDamagedRemote extends UnitComponent
       daywreckerObject: h\getProperty("ReactorClass", "daywreckerObject")
     }
     @pos = h\getPosition!
-    if socketSub
-      socketSub\subscribe(@\_setSocket)
 
-  _setSocket: (socket) =>
-    @socket = socket
+
 
   boom: () =>
     h = @getHandle!
@@ -216,10 +293,7 @@ class ReactorDamagedRemote extends UnitComponent
 
 
   unitWasRemoved: () =>
-    print("Unit was removed")
     proxyCall(@sub,"unsubscribe")
-    if @socket
-      @socket\close()
 
 class ReactorDamaged extends ReactorDamagedRemote
   new: (handle, socketSub) =>
@@ -248,11 +322,13 @@ class ReactorDamaged extends ReactorDamagedRemote
 
 
 ComponentConfig(Turret,{
-  componentName: "ncim.Turret"
+  componentName: "ncim.Turret",
+  remoteCls: RemoteTurret
 })
 
 ComponentConfig(TurretTower,{
-  componentName: "ncim.TurretTower"
+  componentName: "ncim.TurretTower",
+  remoteCls: TurretTower
 })
 
 ComponentConfig(ReactorHealthy,{

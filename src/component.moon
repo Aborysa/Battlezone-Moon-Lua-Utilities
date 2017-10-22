@@ -1,10 +1,11 @@
 -- Component life cycle:
 -- constructed/init - called on init
 -- postInit - called after init/constructor and load
--- unitDidSpawn - called when/if the component spawns
--- unitWasRemoved - called when the component is removed
--- unitWillTransfere
--- unitDidTransfere - might not use this 
+-- unitDidSpawn - called when/if the unit spawns
+-- unitWasRemoved - called when the unit is removed
+-- componentWillUnmount - called when the component is removed
+-- unitWillTransfere - called when the component is about to be removed due to the unit having switched machine
+-- unitDidTransfere - called after postInit when a component has been attached to a handle due to switching machine
 -- update - runs ~every update
 
 
@@ -24,7 +25,7 @@ net = require("net").net
 rx = require("rx")
 
 import Observable from rx
-import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName from utils
+import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
 import Handle from bz_handle
 
 ComponentConfig = (cls,cfg) ->
@@ -46,29 +47,66 @@ ObjCfg = (cls) ->
 
 
 
-
+-- basic unit component
 class UnitComponent
-  new: (handle) =>
-    @_state = {}
+  new: (handle, socketSub) =>
+    @store = Store()
     @handle = Handle(handle)
-
+    if socketSub
+      socketSub\subscribe((socket) -> 
+        @_socket = socket
+      )
 
   getHandle: () =>
     return @handle
 
   setState: (state) =>
-    @_state = assignObject(@_state,state)
-    -- MP syncing here
+    @store\assign(state)
+
+  getStore: () =>
+    @store
+
   state: () =>
-    @_state
+    @store\getState()
 
   save: () =>
-    return @_state
+    return @state()
   
   load: (state) =>
-    @_state = state
+    @store = Store(state)
+
+  componentWillUnmount: () =>
+    if @_socket
+      @_socket\waitClose()
 
 
+-- unit component with auto sync
+class SyncedUnitComponent extends UnitComponent
+  new: (handle, socketSub) =>
+    super(handle, socketSub)
+    @remote = IsRemote(handle)
+
+    if socketSub
+      socketSub\subscribe((socket) -> 
+        print("Got socket!")
+        @socket = socket
+        socket\onReceive()\subscribe(@\receive)
+        if not @remote
+          print("Not Remote!")
+          @getStore()\onKeyUpdate()\subscribe((key, value) ->
+            print("Sending",key, value)
+            socket\send("SET", key, value, 1, false, true, "Crap", {key: value})
+          )
+      )
+
+
+
+  receive: (...) =>
+    what, a, b = ...
+    print("Recived", ...)
+    if what == "SET"
+      print("Setting",a,b)
+      @getStore()\set(a, b)
 
 
 class ComponentManager extends Module
@@ -99,9 +137,8 @@ class ComponentManager extends Module
 
     for i,v in pairs(@objbyhandle)
       --if(not @remoteHandles[i])
-      if IsValid(i)
+      if IsValid(i) and IsNetGame()
         -- objects locality has changed
-      
         if (@remoteHandles[i] ~= nil) ~= (IsRemote(i) or not IsLocal(i)) 
           rem = IsRemote(i)
           @remoteHandles[i] = rem
@@ -114,7 +151,10 @@ class ComponentManager extends Module
               cls = rem and @classes[cname]
               inst = @createInstance(i,cls)
               protectedCall(inst, "load", protectedCall(obj, "save"))
+              protectedCall(objs, "componentWillUnmount")
               protectedCall(inst, "postInit")
+              protectedCall(inst, "unitDidTransfere")
+              
             else
               table.insert(@objbyhandle, obj)
 
@@ -173,7 +213,7 @@ class ComponentManager extends Module
   createInstance: (handle,cls) =>
     c = ObjCfg(cls)
     instance = nil
-
+    socketSub = nil
 
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
@@ -185,7 +225,6 @@ class ComponentManager extends Module
         --a bit hacky
         instance = {}
     else
-      socketSub = nil
       if (IsNetGame() and c.remoteCls)
         socketSub = Observable.of(net\openSocket(0,"OBJ",handle,getFullName(cls)))
       instance = cls(handle, socketSub)
@@ -197,12 +236,13 @@ class ComponentManager extends Module
     table.insert(@objbyhandle[handle],instance)
     return instance
 
-    
+
   removeHandle: (handle) =>
     objs = @objbyhandle[handle]
     @objbyhandle[handle] = nil
     if objs
       proxyCall(objs,"unitWasRemoved")
+      proxyCall(objs,"componentWillUnmount")
       
   save: (...) =>
     componentData = {}
@@ -236,5 +276,6 @@ return {
   :ComponentManager,
   :UnitComponent,
   :componentManager,
-  :ComponentConfig
+  :ComponentConfig,
+  :SyncedUnitComponent
 }

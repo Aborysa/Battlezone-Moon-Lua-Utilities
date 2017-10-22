@@ -38,6 +38,7 @@ class Socket
     @connectSubject = Subject.create()
     @receiveSubject = Subject.create()
     @incomingBuffer = {}
+    @incomingQueueSize = 0
     @queue = {}
     @_currentId = 1
     @alive =  true
@@ -65,14 +66,16 @@ class Socket
       p = @queue[1]
       if p
         --print("Sending next...",p._head)
-        d = p[p._head] or #p
+        d = #p
+        if p._head > 0
+          d = p[p._head]
         @interface\send("P", p._head,p._id,d)
         p._head += 1
         if(p._head > #p)
           p._sub\onNext(p._id)
           p._sub\onCompleted()
           table.remove(@queue,1)
-      elseif @closeWhenEmpty
+      elseif @closeWhenEmpty and @incomingQueueSize <= 0
         @close()
   -- when someone else connects 
   onConnect: () =>
@@ -87,12 +90,14 @@ class Socket
           size = ...
           --print("Incoming package of size",size)
           buffer[id] = [0 for i=1, size]
+          @incomingQueueSize += 1
         elseif buffer[id] ~= nil
           buffer[id][t] = ...
           --print("Got fragment", t, #buffer[id], t >= #buffer[id])
           if t >= #buffer[id]
             @receiveSubject\onNext(unpack(buffer[id],1,#buffer[id]))
             buffer[id] = nil
+            @incomingQueueSize -= 1
       elseif tpe == "C"
         @connectSubject\onNext(f)
 
