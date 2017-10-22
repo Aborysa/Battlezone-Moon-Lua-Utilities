@@ -1,27 +1,27 @@
 workspace:
   base: /bzmoon
-  path: src/${DRONE_REPO_SLUG}
+  path: repo/${DRONE_REPO_SLUG}
 
 pipeline:
-  moon-builder:
-    image: abaez/luarocks
-    when:
-      event:
-        - tag
-        
-    commands:
-      - luarocks install moonscript
-      - mkdir -p /bzmoon/output
-      - moonc /bzmoon/src
-      - find /bzmoon/src -name '*.lua' -type f -exec cp {} /bzmoon/output \;
   bundler:
-    image: localhost:5000/builder
+    image: docker.studynator.me/bzone/bztools:latest
     when:
       event:
         - tag
     commands:
-      - zip -j -r /bzmoon/output/bundle.zip /bzmoon/output
-      - \cp -f /bzmoon/output/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
+      - mkdir -p /tmp/bzmoon
+      - mkdir -p /tmp/bzmoon2
+      - moonc /bzmoon/repo/src
+      - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
+      - mv rx.lua /tmp/bzmoon
+      - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
+      - cp /bzmoon/repo/.squish /tmp/bzmoon
+      - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
+      - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
+      - mv /tmp/bzmoon2/* /tmp/bzmoon
+      - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
+      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
+      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_latest.zip || true
     volumes:
       - /root/studynator/nginx-fs/public/bzmoon/:/drone/deploy
 
