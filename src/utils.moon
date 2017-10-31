@@ -10,9 +10,15 @@ _unpack = unpack
 _GetOdf = GetOdf
 _GetPilotClass  = GetPilotClass
 _GetWeaponClass = GetWeaponClass
-
-
+_OpenODF = OpenODF
 _BuildObject = BuildObject
+
+
+_odf_cache = setmetatable({},{__mode: "v"})
+
+export OpenODF = (odf) ->
+  _odf_cache[odf] = _odf_cache[odf]~=nil and _odf_cache[odf] or _OpenODF(odf)
+  return _odf_cache[odf]
 
 if IsNetGame()
   export BuildObject = (...) ->
@@ -36,7 +42,7 @@ export GetWeaponClass = (...) ->
 export SetLabel = SetLabel or SettLabel
 
 export IsFriend = (a, b) ->
-  IsTeamAllied(a, b) or a == b
+  IsTeamAllied(a, b) or a == b or a == 0 or b == 0
 
 
 simulatedTime = 0
@@ -97,11 +103,11 @@ assignObject = (...) ->
   return {k,v for obj in *{...} for k, v in pairs(obj) }
 
 ommit = (table, fields) ->
-  t = {k, v for k, v in pairs(assignObject({},table)) when not isIn(k,fields)}
+  {k, v for k, v in pairs(table) when not isIn(k,fields)}
   
 
 compareTables = (a, b) ->
-  {k, v for k, v in pairs(assignObject(a,b)) when a[k] ~= b[k]}
+  {k, v for k, v in pairs(assignObject(a,b)) when a[k] ~= b[k]  }
   
 
 
@@ -177,7 +183,7 @@ getHash = (any) ->
 class Store
   new: (initial_state) =>
     @state = initial_state or {}
-    @updateSubject = ReplaySubject.create(1)
+    @updateSubject = Subject.create()
     @keyUpdateSubject = Subject.create()
 
   set: (key, value) =>
@@ -186,10 +192,17 @@ class Store
   assign: (kv_pairs) =>
     p_state = @state
     @state = assignObject(@state, kv_pairs)
-    for k, v in pairs(compareTables(p_state, kv_pairs))
+    for k, v in pairs(compareTables(p_state, @state))
       @keyUpdateSubject\onNext(k,v)
     @updateSubject\onNext(@state, p_state)
 
+  silentSet: (key, value) =>
+    @silentAssign({[key]: value})
+
+  silentAssign: (kv_pairs) =>
+    p_state = @state
+    @state = assignObject(@state, kv_pairs)
+    
   getState: () =>
     @state
 
@@ -382,22 +395,65 @@ class OdfFile
 
 
 --Other functions
-normalWeapons = {"cannon","machinegun","thermallauncher","imagelauncher"}
+normalWeapons = {"cannon","machinegun","thermallauncher","imagelauncher", "snipergun"}
 dispenserWeps = {
   radarlauncher: {"RadarLauncherClass", "objectClass"}, 
   dispenser: {"DispenserClass", "objectClass"}
 }
 
-getAmmoCost = (odf using nil) ->
+
+
+getWepOrdnance = (odf using nil) ->
   ofile = OdfFile(odf)
   classLabel = ofile\getProperty("WeaponClass","classLabel")
-  if(isIn(classLabel,normalWeapons))
-    ord = wepOdf\getProperty("WeaponClass","ordName")
-    if(ord)
-      ordFile = OdfFile(ord)
-      return ordFile\getInt("OrdnanceClass","ammoCost")
-  
+  if(isIn(classLabel,normalWeapons)) or classLabel == "beamgun"
+    ord = ofile\getProperty("WeaponClass","ordName")
+    return ord
+
+
+getWepAmmoCost = (odf using nil) ->
+  ord = getWepOrdnance(odf)
+  if ord
+    ordFile = OdfFile(ord)
+    return ordFile\getInt("OrdnanceClass","ammoCost")
   return 0
+
+-- base damage only, no explosion
+getWepDamage = (odf using nil) ->
+  ord = getWepOrdnance(odf)
+  if ord
+    ordFile = OdfFile(ord)
+    return ordFile\getInt("OrdnanceClass","damageBallistic") + 
+      ordFile\getInt("OrdnanceClass","damageConcussion") + 
+      ordFile\getInt("OrdnanceClass","damageFlame") + 
+      ordFile\getInt("OrdnanceClass","damageImpact")
+      
+  return 0
+
+getWepDelay = (odf using nil) ->
+  f = OdfFile(odf)
+  wepc = f\getProperty("WeaponClass", "classLabel")
+  if isIn(wepc, normalWeapons) 
+    d1 = f\getFloat("LauncherClass", "shotDelay", 0)
+    return d1 > 0 and d1 or f\getFloat("CannonClass", "shotDelay", 0)
+  elseif wepc == "beamgun"
+    return 1
+
+  return 0
+
+dps_cache = {}
+
+getWepDps = (odf using dps_cache) ->
+  if dps_cache[odf]
+    return dps_cache[odf]
+  damage = getWepDamage(odf)
+  delay = getWepDelay(odf)
+  dps = 0
+  if delay > 0
+    dps = damage/delay
+
+  dps_cache[odf] = dps
+  return dps
 
 spawnInFormation = (formation,location,direction,unitlist,team,seperation) ->
   if seperation == nil
@@ -484,6 +540,11 @@ spawnInFormation2 = (formation, location, ...) ->
 
 createClass = (name, methods, parent) ->
   _class = nil
+  _base = ommit(methods,{"new","super"}) or {}
+  _base.__index = _base
+  if parent
+    setmetatable(_base, parent.__base)
+
   _class = {
     __init: (...) => 
       if methods.new
@@ -496,15 +557,13 @@ createClass = (name, methods, parent) ->
     __parent: parent,
     __inherited: methods.__inherited
   }
-  _base = ommit(methods,{"new","super"}) or {}
-  _base.__index = _base
   _base.super = (name,...) =>
     _class.__parent[name](@,...) 
-  if parent
-    setmetatable(_base, parent.__base)
+
 
   _class = setmetatable(_class, {
     __index: (name) =>
+      print("Indexing",name)
       val = rawget(_base, name)
       if val == nil then
         _parent = rawget(@, "__parent")
@@ -554,5 +613,6 @@ namespace("utils", Module, Timer, Area)
   :Module,
   :instanceof,
   :isNullPos,
-  :Store
+  :Store,
+  :getWepDps
 }

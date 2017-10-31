@@ -3,7 +3,7 @@ core = require("core")
 rx = require("rx")
 utils = require("utils")
 
-import assignObject, Timer, namespace from utils
+import assignObject, Timer, namespace, Store from utils
 import Subject, AsyncSubject, ReplaySubject from rx
 
 
@@ -15,6 +15,16 @@ MAX_INTERFACE = 5000
 --this might cause memory issues for interfaces open for longer amounts of time
 
 
+
+addedPlayers = 0
+
+_Send = Send
+
+
+-- only send data if there are other players in game
+export Send = (...) ->
+  if addedPlayers > 0
+    _Send(...)
 class NetPlayer
   new: (id, name, team) =>
     @id = id
@@ -65,7 +75,6 @@ class Socket
     if @alive
       p = @queue[1]
       if p
-        --print("Sending next...",p._head)
         d = #p
         if p._head > 0
           d = p[p._head]
@@ -121,6 +130,17 @@ class Socket
     if @interface\isOpen()
       @interface\close()
 
+
+
+class BroadcastSocket extends Socket
+  new: (...) =>
+    super(...)
+    @onReceive()\subscribe(super\send)
+    
+  send: (...) =>
+    super(...)
+    @receiveSubject\onNext(...)
+
 class NetworkInterface
   new: (interface_id, to) =>
     @id = interface_id
@@ -164,6 +184,9 @@ class NetworkInterfaceManager
     @nextInterface_id = 0
     -- subject that fires once networking is ready
     @networkReadySubject = AsyncSubject.create()
+    -- subject that fires when a new host is selected
+    @hostMigrationSubject = Subject.create()
+    @isHostMigrating = false
     @network_ready = false
     -- the sockets that are listening for connections
     @serverSockets = {}
@@ -172,14 +195,30 @@ class NetworkInterfaceManager
     -- sockets that we request to listen to
     @requestSockets = {}
     @requestSocketsIds = {}
+    @playerInterfaceMap = {}
     @nextRequestId = 0
+    @hostPlayer = nil
+
 
     @allSockets = {}
     @playerCount = 0
     @players = {}
+    @lastPlayer = {}
+
+
+  getLocalPlayer: () =>
+    if not @isNetworkReady
+      error("Unknown! Network is not ready")
+    return @localPlayer
+
+  isNetworkReady: () =>
+    return @network_ready
 
   onNetworkReady: () =>
     return @networkReadySubject
+
+  onHostMigration: () =>
+    return @hostMigrationSubject
 
   getInterfaceById: (id) =>
     @networkInterfaces[id]
@@ -188,14 +227,28 @@ class NetworkInterfaceManager
     i = @getInterfaceById(id)
     if i == nil
       i = NetworkInterface(id, to)
+      if @playerInterfaceMap[to] == nil
+        @playerInterfaceMap[to] = {}
+      @playerInterfaceMap[to][id] = true
       @networkInterfaces[id] = i
+      i\getMessages()\subscribe(nil, nil, () ->
+        @playerInterfaceMap[to][id] = nil
+        @networkInterfaces[id] = nil
+        @allSockets[id] = nil
+      )
     return i
 
   _terminateInterface: (interface_id) =>
     Send(0, "X", interface_id)
+    @allSockets[interface_id] = nil
+    @networkInterfaces[interface_id] = nil
     table.insert(@availableIDs,id)
 
-    
+  
+  -- cleans up all sockets and network interfaces after a player has left
+  _cleanUpInterfaces: (player) =>
+
+
   createNewInterface: (to) =>
     id = nil
     if #@availableIDs <= 0
@@ -235,16 +288,18 @@ class NetworkInterfaceManager
  
 
 
-  openSocket: (to, ...) =>
+  openSocket: (to, socket_type, ...) =>
+    socket_type = socket_type or Socket
     if @network_ready
       leaf = @_getLeaf(@serverSockets,...)
       if leaf
         if leaf.__socket
           error("Can not have multiple sockets on one channel")
         i = @createNewInterface(to)
-        leaf.__socket = Socket(i)
+        leaf.__socket = socket_type(i)
         @allSockets[i\getId()] = leaf.__socket
         leaf.__socket\onReceive()\subscribe(nil,nil,() ->
+          print("Leaf: socket closed")
           leaf.__socket = nil
         )
         return leaf.__socket
@@ -308,18 +363,36 @@ class NetworkInterfaceManager
     elseif t == "I"
       if @machine_id == -1
         @machine_id = a
-        @network_ready = true
-        print("Network is now ready")
-        @networkReadySubject\onNext()
-        @networkReadySubject\onCompleted()
-
-  start: () =>
-    if IsNetGame() and not @network_ready and @playerCount <= 1
-      @machine_id = @players[1].id
+        @localPlayer = @players[@machine_id]
+        if IsHosting()
+          @hostPlayer = @localPlayer
+    elseif t == "H"
+      @hostPlayer = @players[f] or {id: f, name: "Unknown", team: 0}
+      if @isHostMigrating
+        @hostMigrationSubject\onNext(@hostPlayer)
+        @isHostMigrating = false
+    if @hostPlayer~=nil and @machine_id~=-1 and not @network_ready
+      print("Network is now ready")
       @network_ready = true
       @networkReadySubject\onNext()
       @networkReadySubject\onCompleted()
 
+  start: () =>
+    if IsNetGame() and not @network_ready and @playerCount <= 1
+      @machine_id = @lastPlayer.id
+      @localPlayer = @lastPlayer
+      @network_ready = true
+      @hostPlayer = @localPlayer
+      @networkReadySubject\onNext()
+      @networkReadySubject\onCompleted()
+    elseif not IsNetGame()
+      @machine_id = 0
+      @localPlayer = {name: "Player", team: 1, id: 0}
+      @hostPlayer = @localPlayer
+      @network_ready = true
+      @networkReadySubject\onNext()
+      @networkReadySubject\onCompleted()
+   
   update: (dtime) =>
     for i, v in ipairs(@requestSocketsIds)
       v.timer\update(dtime)
@@ -327,13 +400,74 @@ class NetworkInterfaceManager
     for i, v in pairs(@allSockets)
       v\sendNext()
 
+    if @isHostMigrating and IsHosting()
+      @hostPlayer = @localPlayer
+      @isHostMigrating = false
+      @hostMigrationSubject\onNext(@hostPlayer)
+      Send(0, "H")
+
   addPlayer: (id, name, team) =>
     print("Player added!",id,name,team)
+    addedPlayers += 1
+    @playerInterfaceMap[id] = {}
+    if IsHosting() then
+      Send(id, "H")
     Send(id, "I", id)
 
   createPlayer: (id, name, team) =>
     @playerCount += 1
-    table.insert(@players,{:id,:name,:team})
+    @players[id] = {:id, :name, :team}
+    @lastPlayer = @players[id]
+    --table.insert(@players,{:id,:name,:team})
+
+  deletePlayer: (id, name, team) =>
+    
+    addedPlayers -= 1
+    for i, v in pairs(@playerInterfaceMap[id] or {}) do
+      @_getOrCreateInterface(i)\close()
+    
+    if id == (@hostPlayer or {id: -1}).id
+      @isHostMigrating = true
+    @players[id] = nil
+
+
+
+class SharedStore extends Store
+  new: (initial_state, socket) =>
+    super(initial_state)
+    @socket = socket
+    @internal_store = Store(initial_state)
+
+    --@extUpdate =  --super\onStateUpdate()\merge()
+    --@extKeyUp = --super\onKeyUpdate()\merge(@internal_store\onKeyUpdate())
+    --@internal_store\onKeyUpdate()\subscribe((key, value) ->
+    --  print("Internal store set", key, value)
+    --)
+    super\onKeyUpdate()\subscribe((...) ->
+      @socket\send("SET", ...)
+      @internal_store\set(...)
+    )
+
+    @socket\onReceive()\subscribe((what, ...) ->
+      if what == "SET"
+        @silentSet(...)
+        @internal_store\set(...)
+        
+    )
+
+    @socket\onConnect()\subscribe(() -> 
+      s = @getState()
+      for i, v in pairs(s)
+        @socket\send("SET", i, v)
+    )
+
+  onStateUpdate: () =>
+    @internal_store\onStateUpdate()
+
+  onKeyUpdate: () =>
+    @internal_store\onKeyUpdate()
+
+
 
 namespace("net",Socket, NetworkInterface, NetworkInterfaceManager)
 
@@ -341,7 +475,9 @@ net = core\useModule(NetworkInterfaceManager)
 
 return {
   :Socket,
+  :BroadcastSocket,
   :NetworkInterface,
   :NetworkInterfaceManager,
-  :net
+  :net,
+  :SharedStore
 }

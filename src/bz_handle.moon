@@ -2,7 +2,7 @@
 utils = require("utils")
 rx = require("rx")
 
-import OdfFile from utils
+import OdfFile, getWepDps from utils
 import Subject, AsyncSubject from rx
 
 
@@ -47,12 +47,21 @@ copyObject = (handle, odf, team, location, keepWeapons=false, kill=false, fracti
 class Handle
   new: (handle) =>
     @handle = handle
+    @dps = 0
+    for i=0, 4
+      wpc =  @getWeaponClass(i)
+      if wpc ~= nil and #wpc > 0
+        @dps += getWepDps(wpc)
+
 
   getHandle: () =>
     @handle
 
   removeObject: () =>
     RemoveObject(@getHandle!)
+
+  getDps: () =>
+    @dps
 
   cloak: () =>
     Cloak(@getHandle!)

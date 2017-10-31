@@ -35,7 +35,7 @@ class EventDispatcher
 
   dispatch: (event) =>
     if(@subjects[event.name])
-      @subjects[event]\onNext(event)
+      @subjects[event.name]\onNext(event)
 
 
 class EventDispatcherModule extends Module
@@ -74,6 +74,9 @@ class EventDispatcherModule extends Module
     super\gameKey(...)
     @dispatcher\dispatch(Event("GAME_KEY",nil,nil,...))
 
+  update: (...) =>
+    super\update(...)
+    @dispatcher\dispatch(Event("UPDATE",nil,nil,...))
 
 bzApi = core\useModule(EventDispatcherModule)\getDispatcher()
 

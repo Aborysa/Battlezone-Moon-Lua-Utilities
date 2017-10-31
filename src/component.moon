@@ -135,6 +135,7 @@ class ComponentManager extends Module
     for i,v in pairs(@waitToAdd)
       @_regHandle(i)
 
+
     for i,v in pairs(@objbyhandle)
       --if(not @remoteHandles[i])
       if IsValid(i) and IsNetGame()
@@ -204,7 +205,6 @@ class ComponentManager extends Module
         isIn(c.componentName,componentNames) or
         isIn(odf,c.odfs) or
         c.customTest(handle)
-      
       if use
         table.insert(ret,@createInstance(handle,v))
 
@@ -227,6 +227,7 @@ class ComponentManager extends Module
     else
       if (IsNetGame() and c.remoteCls)
         socketSub = Observable.of(net\openSocket(0,"OBJ",handle,getFullName(cls)))
+      print("Creating instance", cls, handle)
       instance = cls(handle, socketSub)
     --table.insert(@objbyclass[cls],instance)
     applyMeta(instance,{
