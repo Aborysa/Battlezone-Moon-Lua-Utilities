@@ -25,6 +25,8 @@ _Send = Send
 export Send = (...) ->
   if addedPlayers > 0
     _Send(...)
+
+  
 class NetPlayer
   new: (id, name, team) =>
     @id = id
@@ -332,6 +334,9 @@ class NetworkInterfaceManager
 
   receive: (f, t, a, ...) =>
     -- network interface package
+    if @localPlayer and @localPlayer.id == f
+      return
+      
     if t == "N"
       i = @_getOrCreateInterface(a, f)
       i\receive(f,...)
