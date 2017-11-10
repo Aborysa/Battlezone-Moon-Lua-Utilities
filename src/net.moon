@@ -26,6 +26,41 @@ export Send = (...) ->
   if addedPlayers > 0
     _Send(...)
 
+
+class NetworkInterface
+  new: (interface_id, to) =>
+    @id = interface_id
+    @to = type(to) == "number" and {to} or assignObject({},to)
+    @subject = ReplaySubject.create()
+    @alive = true
+
+  send: (...) =>
+    if @alive
+      for i, v in pairs(@to)
+        Send(v, "N", @id, ...)
+    else
+      error("Trying to send something via a closed network interface")
+
+  getMessages: () =>
+    @subject
+
+  receive: (...) =>
+    if @alive
+      @subject\onNext(...)
+
+  close: () =>
+    if @alive
+      @subject\onCompleted()
+      @alive = false
+    else
+      error("Interface has already closed")
+
+  isOpen: () =>
+    @alive
+
+  getId: () =>
+    @id
+
   
 class NetPlayer
   new: (id, name, team) =>
@@ -133,6 +168,39 @@ class Socket
       @interface\close()
 
 
+-- temporary server socket, might want to create a better server-client architecture later
+-- is rather hacky too
+class ServerSocket extends Socket
+  new: (...) =>
+    super(...)
+    @onConnect()\subscribe(@\_onConnect)
+    @subSockets = {}
+
+  _onConnect: (to) =>
+    @subSockets[to] = Socket(NetworkInterface(@interface\getId(), to))
+
+  receive: (f,tpe,t,id,...) =>
+    if @alive
+      @incomingBuffer[f] = @incomingBuffer[f] or {}
+      buffer = @incomingBuffer[f]
+      if tpe == "P"
+        if t == 0
+          size = ...
+          buffer[id] = [0 for i=1, size]
+          @incomingQueueSize += 1
+        elseif buffer[id] ~= nil
+          buffer[id][t] = ...
+          if t >= #buffer[id]
+            @receiveSubject\onNext(@subSockets[f],unpack(buffer[id],1,#buffer[id]))
+            buffer[id] = nil
+            @incomingQueueSize -= 1
+      elseif tpe == "C"
+        @connectSubject\onNext(f)
+
+  sendNext: (...) =>
+    super(...)
+    for i, v in pairs(@subSockets)
+      v\sendNext(...)
 
 class BroadcastSocket extends Socket
   new: (...) =>
@@ -143,39 +211,6 @@ class BroadcastSocket extends Socket
     super(...)
     @receiveSubject\onNext(...)
 
-class NetworkInterface
-  new: (interface_id, to) =>
-    @id = interface_id
-    @to = type(to) == "number" and {to} or assignObject({},to)
-    @subject = ReplaySubject.create()
-    @alive = true
-
-  send: (...) =>
-    if @alive
-      for i, v in pairs(@to)
-        Send(v, "N", @id, ...)
-    else
-      error("Trying to send something via a closed network interface")
-
-  getMessages: () =>
-    @subject
-
-  receive: (...) =>
-    if @alive
-      @subject\onNext(...)
-
-  close: () =>
-    if @alive
-      @subject\onCompleted()
-      @alive = false
-    else
-      error("Interface has already closed")
-
-  isOpen: () =>
-    @alive
-
-  getId: () =>
-    @id
 
 class NetworkInterfaceManager
   new: () =>
@@ -201,17 +236,28 @@ class NetworkInterfaceManager
     @nextRequestId = 0
     @hostPlayer = nil
 
+    @playerHandles = {}
 
     @allSockets = {}
     @playerCount = 0
     @players = {}
     @lastPlayer = {}
 
+    @phandle = GetPlayerHandle()
 
   getLocalPlayer: () =>
     if not @isNetworkReady
       error("Unknown! Network is not ready")
     return @localPlayer
+
+  getPlayer: (id) =>
+    if not @isNetworkReady
+      error("Unknown! Network is not ready")
+    return @players[id]
+
+
+  getPlayerHandle: (team) =>
+    IsValid(GetPlayerHandle(team)) and GetPlayerHandle(team) or @playerHandles[team]
 
   isNetworkReady: () =>
     return @network_ready
@@ -289,41 +335,49 @@ class NetworkInterfaceManager
 
  
 
-
-  openSocket: (to, socket_type, ...) =>
-    socket_type = socket_type or Socket
+  openSocket: (to, socket_type=Socket, ...) =>
     if @network_ready
       leaf = @_getLeaf(@serverSockets,...)
+      i = @createNewInterface(to)
+      socket = socket_type(i)
+      @allSockets[i\getId()] = socket
+        
       if leaf
         if leaf.__socket
           error("Can not have multiple sockets on one channel")
-        i = @createNewInterface(to)
-        leaf.__socket = socket_type(i)
-        @allSockets[i\getId()] = leaf.__socket
+        leaf.__socket = socket
         leaf.__socket\onReceive()\subscribe(nil,nil,() ->
           print("Leaf: socket closed")
           leaf.__socket = nil
         )
         return leaf.__socket
       else
-        error("No channels provided")
+        -- open socket without channel
+        return socket
+        --error("No channels provided")
     else
       error("Network is not ready")
   
+  getHeadlessSocket: (to, interface_id, socket_type=Socket) =>
+    s = socket_type(@_getOrCreateInterface(interface_id, to), true)
+    @allSockets[interface_id] = s
+    return s
+
   getRemoteSocket: (...) =>
     leaf = @_getLeaf(@requestSockets, ...)
     if leaf
       if leaf.__socketSubject == nil
         @nextRequestId += 1
+        requestId = @nextRequestId
         leaf.__socketSubject = AsyncSubject.create()
         t = Timer(1, -1)
         args = {...}
-        @requestSocketsIds[@nextRequestId] = {
+        @requestSocketsIds[requestId] = {
           sub: leaf.__socketSubject, 
           leaf: leaf,
           timer: t,
           subscription: t\onAlarm()\subscribe(() -> 
-            Send(0, "R", @nextRequestId, unpack(args))
+            Send(0, "R", requestId, unpack(args))
           )
         }
         t\start()
@@ -376,6 +430,13 @@ class NetworkInterfaceManager
       if @isHostMigrating
         @hostMigrationSubject\onNext(@hostPlayer)
         @isHostMigrating = false
+    
+    elseif t == "Q"
+      p = @getPlayer(f)
+      print("Player handle updated", p.team, a, GetPlayerHandle(p.team))
+      if p
+        @playerHandles[p.team] = a or GetPlayerHandle(p.team)
+    
     if @hostPlayer~=nil and @machine_id~=-1 and not @network_ready
       print("Network is now ready")
       @network_ready = true
@@ -410,6 +471,12 @@ class NetworkInterfaceManager
       @isHostMigrating = false
       @hostMigrationSubject\onNext(@hostPlayer)
       Send(0, "H")
+
+    ph = GetPlayerHandle()
+    if ph ~= @phandle
+      Send(0, "Q", ph)
+    @phandle = GetPlayerHandle()
+
 
   addPlayer: (id, name, team) =>
     print("Player added!",id,name,team)
@@ -481,6 +548,7 @@ net = core\useModule(NetworkInterfaceManager)
 return {
   :Socket,
   :BroadcastSocket,
+  :ServerSocket,
   :NetworkInterface,
   :NetworkInterfaceManager,
   :net,

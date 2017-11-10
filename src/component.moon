@@ -9,6 +9,17 @@
 -- update - runs ~every update
 
 
+--UnitBehaviour:-- Component life cycle:
+-- constructed/init - called on init
+-- postInit - called after init/constructor and load
+-- unitDidSpawn - called when/if the unit spawns
+-- unitWasRemoved - called when the unit is removed
+-- componentWillUnmount - called when the component is removed
+-- unitWillTransfere - called when the component is about to be removed due to the unit having switched machine
+-- unitDidTransfere - called after postInit when a component has been attached to a handle due to switching machine
+-- update - runs ~every update
+
+
 --UnitBehaviour:
 
 -- only runs for ai controlled craft

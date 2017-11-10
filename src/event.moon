@@ -5,6 +5,7 @@ Rx = require("rx")
 import Module from utils
 import Subject from Rx
 
+
 class Event
   new: (name,source,target,...) =>
     @name = name
@@ -36,6 +37,8 @@ class EventDispatcher
   dispatch: (event) =>
     if(@subjects[event.name])
       @subjects[event.name]\onNext(event)
+
+
 
 
 class EventDispatcherModule extends Module

@@ -157,11 +157,7 @@ global2Local = (v,t) ->
   right = SetVector(t.right_x, t.right_y, t.right_z)
   return v.x * front + v.y * up + v.z * right
 
-local2Global = (v,t) ->
-  up = SetVector(t.up_x, t.up_y, t.up_z)
-  front = SetVector(t.front_x, t.front_y, t.front_z)
-  right = SetVector(t.right_x, t.right_y, t.right_z)
-  return v.x / front + v.y / up + v.z / right
+
 
 stringlist = (str) ->
   m = str\match "%s*([%.%w]+)%s*,?"
@@ -592,7 +588,6 @@ namespace("utils", Module, Timer, Area)
   :protectedCall,
   :str2vec,
   :stringlist,
-  :local2Global,
   :global2Local,
   :getHash,
   :assignObject,
@@ -614,5 +609,6 @@ namespace("utils", Module, Timer, Area)
   :instanceof,
   :isNullPos,
   :Store,
-  :getWepDps
+  :getWepDps,
+  :compareTables
 }

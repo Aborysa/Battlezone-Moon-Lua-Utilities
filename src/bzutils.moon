@@ -4,7 +4,7 @@ core = require("core")
 net = require("net")
 component = require("component")
 bz_handle = require("bz_handle")
-
+runtime = require("runtime")
 
 
 return {
@@ -13,5 +13,6 @@ return {
   :core,
   :component,
   :bz_handle,
-  :net
+  :net,
+  :runtime
 }
