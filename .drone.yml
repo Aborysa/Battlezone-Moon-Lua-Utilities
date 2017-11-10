@@ -23,5 +23,5 @@ pipeline:
       - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
       - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_latest.zip || true
     volumes:
-      - /root/studynator/nginx-fs/public/bzmoon/:/drone/deploy
+      - /mnt/nginx-fs/files/public/bzmoon/:/drone/deploy
 
