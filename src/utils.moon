@@ -151,11 +151,28 @@ protectedCall = (obj,method,...) ->
 proxyCall = (objs,method,...) -> 
   return {i,table.pack(protectedCall(v,method,...)) for i, v in pairs(objs)}
 
-global2Local = (v,t) ->
+local2Global = (v,t) ->
   up = SetVector(t.up_x, t.up_y, t.up_z)
   front = SetVector(t.front_x, t.front_y, t.front_z)
   right = SetVector(t.right_x, t.right_y, t.right_z)
   return v.x * front + v.y * up + v.z * right
+
+safeDiv = (a,b) ->
+  if a == 0
+    return 0
+  if b == 0
+    return math.hugh
+  return a/b
+
+safeDivV = (v1,v2) ->
+  return SetVector(safeDiv(v1.x,v2.x), safeDiv(v1.y,v2.y), safeDiv(v1.z, v2.z))
+
+global2Local = (v,t) ->
+  up = SetVector(t.up_x, t.up_y, t.up_z)
+  front = SetVector(t.front_x, t.front_y, t.front_z)
+  right = SetVector(t.right_x, t.right_y, t.right_z)
+  
+  return SetVector(DotProduct(v, front), DotProduct(v, up), DotProduct(v, right))
 
 
 
@@ -589,6 +606,7 @@ namespace("utils", Module, Timer, Area)
   :str2vec,
   :stringlist,
   :global2Local,
+  :local2Global,
   :getHash,
   :assignObject,
   :isIn,
