@@ -4,8 +4,7 @@ utils = require("utils")
 core = require("core")
 
 
-import Module, proxyCall, protectedCall, getFullName from utils
-
+import Module, proxyCall, protectedCall, getFullName, applyMeta, getMeta from utils
 
 
 
@@ -19,6 +18,17 @@ import Module, proxyCall, protectedCall, getFullName from utils
 
 --UnitBehaviour:
 
+setRuntimeState = (inst, state) ->
+  applyMeta(inst, {
+    runtime: {
+      state: state
+    }
+  })
+
+getRuntimeState = (inst, state) ->
+  getMeta(inst).runtime.state
+
+
 class RuntimeController extends Module
   new: (...) =>
     super(...)
@@ -27,25 +37,34 @@ class RuntimeController extends Module
     @nextRoutineId = 1
     @routines = {}
     @classes = {}
+    -- routines that should be removed
+    @garbage = {}
 
   setInterval: (func, delay, count=-1) =>
     id = @nextIntervalId
     @nextIntervalId += 1
     @intervals[id] = {
-      f: func,
+      func: func,
       delay: delay,
       count: -1,
       time: 0
     }
+    setRuntimeState(@intervals[id], 1)
     return id
     
   setTimeout: (func, delay) => 
     @setInterval(func, delay, 1)
 
   clearInterval: (id) =>
-    @intervals[id] = nil
+    if getRuntimeState(@intervals[id]) ~= 0
+      setRuntimeState(@intervals[id], 0)
+      table.insert(@garbage,{
+        t: @intervals,
+        k: id
+      }) 
 
   createRoutine: (cls, ...) =>
+    print("Creating routine", getFullName(cls))
     if type(cls) == "string"
       cls = @classes[cls]
       
@@ -55,8 +74,8 @@ class RuntimeController extends Module
     
     id = @nextRoutineId
     @nextRoutineId += 1
-    print("routine", cls)
     inst = cls((...) -> @clearRoutine(id, ...))
+    setRuntimeState(inst, 1)
     @routines[id] = inst
     protectedCall(inst, "routineWasCreated", ...)
     protectedCall(inst, "postInit")
@@ -73,12 +92,21 @@ class RuntimeController extends Module
 
   clearRoutine: (id, ...) =>
     inst = @routines[id]
-    if inst
-      @routines[id] = nil
+    if inst and getRuntimeState(inst) ~= 0
+      setRuntimeState(inst, 0)
       protectedCall(inst, "routineWasDestroyed", ...)
-      
+      table.insert(@garbage,{
+        t: @routines,
+        k: id
+      })
+
   update: (dtime) =>
-    for i, v in pairs(@intervals) do
+    for i, v in ipairs(@garbage)
+      v.t[v.k] = nil
+
+    @garbage = {}
+
+    for i, v in pairs(@intervals)
       v.time = v.time + dtime
       if v.time >= v.delay
         v.time -= v.delay
@@ -94,7 +122,7 @@ class RuntimeController extends Module
     for i, v in pairs(@routines)
       routineData[i] = {
         rdata: table.pack(protectedCall(v, "save")),
-        clsName: getFullName(obj.__class)
+        clsName: getFullName(v.__class)
       }
 
     return {
@@ -112,7 +140,7 @@ class RuntimeController extends Module
       inst = cls((...) -> @clearRoutine(rid, ...))
       protectedCall(inst,"load",unpack(routine.rdata))
       protectedCall(inst,"postInit")
-
+      @routines[rid] = inst
 
 
 runtimeController = core\useModule(RuntimeController)
