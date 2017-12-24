@@ -114,8 +114,9 @@ class RuntimeController extends Module
         v.count -= 1
         if v.count == 0
           @clearInterval(i)
-
-    proxyCall(@routines,"update", dtime)
+    for i, v in pairs(@routines)
+      if getRuntimeState(v) ~= 0
+        protectedCall(v, "update", dtime)
     
   save: (...) =>
     routineData = {}
