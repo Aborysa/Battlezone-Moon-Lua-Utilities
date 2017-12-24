@@ -370,13 +370,18 @@ class NetworkInterfaceManager
         @nextRequestId += 1
         requestId = @nextRequestId
         leaf.__socketSubject = AsyncSubject.create()
-        t = Timer(1, -1)
+        t = Timer(2, -1)
         args = {...}
         @requestSocketsIds[requestId] = {
           sub: leaf.__socketSubject, 
           leaf: leaf,
           timer: t,
-          subscription: t\onAlarm()\subscribe(() -> 
+          subscription: t\onAlarm()\subscribe((t, life) ->
+            if life == 0
+              leaf.__socketSubject\onNext(nil)
+              leaf.__socketSubject\onCompleted()
+              leaf.__socketSubject = nil
+              @requestSocketsIds[requestId] = nil
             Send(0, "R", requestId, unpack(args))
           )
         }
