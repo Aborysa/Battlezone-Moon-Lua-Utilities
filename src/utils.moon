@@ -45,6 +45,16 @@ export IsFriend = (a, b) ->
   IsTeamAllied(a, b) or a == b or a == 0 or b == 0
 
 
+export IsBzr = () ->
+  GameVersion\match("^2") ~= nil
+
+export IsBz15 = () ->
+  GameVersion\match("^1.5") ~= nil
+
+export IsBz2 = () ->
+  not (IsBzr or IsBz15)
+
+
 simulatedTime = 0
 
 export GetSimTime = () ->
