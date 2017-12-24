@@ -1,5 +1,4 @@
 utils = require("utils")
-core = require("core")
 Rx = require("rx")
 
 import Module from utils
@@ -81,10 +80,7 @@ class EventDispatcherModule extends Module
     super\update(...)
     @dispatcher\dispatch(Event("UPDATE",nil,nil,...))
 
-bzApi = core\useModule(EventDispatcherModule)\getDispatcher()
-
 {
-  :bzApi,
   :EventDispatcherModule,
   :EventDispatcher
 }

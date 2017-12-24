@@ -9,7 +9,7 @@ bz_handle = bzutils.bz_handle
 rx = require("rx")
 
 import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
-import UnitComponent, SyncedUnitComponent, ComponentConfig, componentManager from component
+import UnitComponent, SyncedUnitComponent, ComponentConfig from component
 import Observable, AsyncSubject from rx
 import ObjectTracker, Handle from bz_handle
 

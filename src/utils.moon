@@ -551,10 +551,11 @@ class Module
   command: (...) =>
     proxyCall(@submodules,"command", ...)
 
-  useModule: (cls) =>
-    inst = cls(@)
+  useModule: (cls, ...) =>
+    inst = cls(@, ...)
     @submodules[getFullName(cls)] = inst
     return inst
+
 
 
 

@@ -30,8 +30,6 @@
 
 utils = require("utils")
 bz_handle = require("bz_handle")
-core = require("core")
-net = require("net").net
 
 rx = require("rx")
 
@@ -121,13 +119,16 @@ class SyncedUnitComponent extends UnitComponent
 
 
 class ComponentManager extends Module
-  new: (parent) =>
+  new: (parent, serviceManager) =>
     super(parent)
     @classes = {}
     --@objbyclass = {}
     @objbyhandle = {}
     @remoteHandles = {}
     @waitToAdd = {}
+    serviceManager\getService("bzutils.net")\subscribe( (net) -> 
+      @net = net
+    )
   
   start: (...) =>
     super\start(...)
@@ -230,14 +231,14 @@ class ComponentManager extends Module
       @remoteHandles[handle] = true
       if (c.remoteCls)
         print("Creating remote instance")
-        socketSub = net\getRemoteSocket("OBJ",handle,getFullName(cls))
+        socketSub = @net\getRemoteSocket("OBJ",handle,getFullName(cls))
         instance = c.remoteCls(handle, socketSub)
       else
         --a bit hacky
         instance = {}
     else
       if (IsNetGame() and c.remoteCls)
-        socketSub = Observable.of(net\openSocket(0,"OBJ",handle,getFullName(cls)))
+        socketSub = Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls)))
       print("Creating instance", cls, handle)
       instance = cls(handle, socketSub)
     --table.insert(@objbyclass[cls],instance)
@@ -281,13 +282,11 @@ class ComponentManager extends Module
         protectedCall(inst,"postInit")
         
 namespace("component",ComponentManager, UnitComponent)
-componentManager = core\useModule(ComponentManager)
 
 
 return {
   :ComponentManager,
   :UnitComponent,
-  :componentManager,
   :ComponentConfig,
   :SyncedUnitComponent
 }

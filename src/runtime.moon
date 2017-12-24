@@ -1,8 +1,6 @@
 
 
 utils = require("utils")
-core = require("core")
-
 
 import Module, proxyCall, protectedCall, getFullName, applyMeta, getMeta from utils
 
@@ -144,8 +142,7 @@ class RuntimeController extends Module
       @routines[rid] = inst
 
 
-runtimeController = core\useModule(RuntimeController)
-
 return {
-  :runtimeController
+  :RuntimeController,
+  :getRuntimeState
 }

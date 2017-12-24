@@ -1,5 +1,4 @@
 
-core = require("core")
 rx = require("rx")
 utils = require("utils")
 
@@ -548,14 +547,11 @@ class SharedStore extends Store
 
 namespace("net",Socket, NetworkInterface, NetworkInterfaceManager)
 
-net = core\useModule(NetworkInterfaceManager)
-
 return {
   :Socket,
   :BroadcastSocket,
   :ServerSocket,
   :NetworkInterface,
   :NetworkInterfaceManager,
-  :net,
   :SharedStore
 }
