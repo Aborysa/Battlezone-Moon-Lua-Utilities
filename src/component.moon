@@ -163,7 +163,7 @@ class ComponentManager extends Module
               cls = rem and @classes[cname]
               inst = @createInstance(i,cls)
               protectedCall(inst, "load", protectedCall(obj, "save"))
-              protectedCall(objs, "componentWillUnmount")
+              protectedCall(obj, "componentWillUnmount")
               protectedCall(inst, "postInit")
               protectedCall(inst, "unitDidTransfere")
               
