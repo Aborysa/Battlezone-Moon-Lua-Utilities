@@ -15,7 +15,8 @@ import NetworkInterfaceManager from net
 import RuntimeController from runtime
 import EventDispatcherModule from event
 
-defaultSetup = () ->
+
+bz1Setup = () ->
   serviceManager = service.ServiceManager()
   core = Module()
   event = core\useModule(EventDispatcherModule, serviceManager)
@@ -28,15 +29,28 @@ defaultSetup = () ->
   serviceManager\createService(componentManager, "bzutils.component")
   serviceManager\createService(runtimeManager, "bzutils.runtime")
 
-
   return {
     :core,
     :serviceManager
   }
 
+bz2Setup = () ->
+
+defaultSetup = () ->
+  if IsBzr() or IsBz15()
+    return bz1Setup()
+  elseif IsBz2
+    return bz2Setup()
+
+
+
+
+
 
 return {
   :defaultSetup,
+  :bz1Setup,
+  :bz2Setup,
   :bz_handle,
   :utils,
   :component,
