@@ -108,21 +108,24 @@ class OrdnanceSpawner extends UnitComponent
       @tsub\unsubscribe()
 
 
-
-SpawnOrdnance = (odf, team, ...) ->
-  obj = BuildLocal(odf, team, SetVector(0,0,0))
-  comp = componentManager\getComponent(obj, OrdnanceSpawner)
-  if comp
-    comp\setWeapon(...)
-  else
-    RemoveObject(obj)
+OrdnanceSpawnerFactory = (serviceManager) ->
+  componentManager = serviceManager\getService("bzutils.component")
+  SpawnOrdnance = (odf, team, ...) ->
+    obj = BuildLocal(odf, team, SetVector(0,0,0))
+    comp = componentManager\getComponent(obj, OrdnanceSpawner)
+    if comp
+      comp\setWeapon(...)
+    else
+      RemoveObject(obj)
+    
+    return comp
   
-  return comp
+  return SpawnOrdnance
 
 
 return {
   :OrdnanceSpawner,
-  :SpawnOrdnance,
+  :OrdnanceSpawnerFactory,
   defaultConf: () ->
     ComponentConfig(OrdnanceSpawner,{
       componentName: "OrdnanceSpawner",
