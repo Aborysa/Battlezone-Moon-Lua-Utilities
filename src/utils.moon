@@ -102,13 +102,16 @@ isIn = (element, list) ->
 assignObject = (...) ->
   return {k,v for obj in *{...} for k, v in pairs(obj) }
 
+copyList = (t, filter=()->true) ->
+  return [v for i, v in ipairs(t) when filter(i,v)]
+
 ommit = (table, fields) ->
   {k, v for k, v in pairs(table) when not isIn(k,fields)}
-  
+
 
 compareTables = (a, b) ->
   {k, v for k, v in pairs(assignObject(a,b)) when a[k] ~= b[k]  }
-  
+
 
 
 isNullPos = (pos) ->
@@ -121,7 +124,7 @@ dropMeta = (obj) ->
   metadata[obj] = nil
 
 applyMeta = (obj,...) ->
-  metadata[obj] = assignObject(getMeta(obj),...) 
+  metadata[obj] = assignObject(getMeta(obj),...)
 
 namespace = (name,...) ->
   for i,v in pairs({...})
@@ -147,8 +150,8 @@ instanceof = (inst,cls) ->
 protectedCall = (obj,method,...) ->
   if(obj[method])
     return obj[method](obj,...)
-  
-proxyCall = (objs,method,...) -> 
+
+proxyCall = (objs,method,...) ->
   return {i,table.pack(protectedCall(v,method,...)) for i, v in pairs(objs)}
 
 local2Global = (v,t) ->
@@ -171,7 +174,7 @@ global2Local = (v,t) ->
   up = SetVector(t.up_x, t.up_y, t.up_z)
   front = SetVector(t.front_x, t.front_y, t.front_z)
   right = SetVector(t.right_x, t.right_y, t.right_z)
-  
+
   return SetVector(DotProduct(v, front), DotProduct(v, up), DotProduct(v, right))
 
 
@@ -215,7 +218,7 @@ class Store
   silentAssign: (kv_pairs) =>
     p_state = @state
     @state = assignObject(@state, kv_pairs)
-    
+
   getState: () =>
     @state
 
@@ -260,7 +263,7 @@ class Timer
 
   reset: () =>
     @tleft = @time
-  
+
   stop: () =>
     @pause()
     @reset()
@@ -298,7 +301,7 @@ class Area
 
   getCenter: () =>
     @center
-  
+
   getObjects: () =>
     return [i for i,v in pairs(@handles)]
 
@@ -311,7 +314,7 @@ class Area
       radius = 0
       for i,v in ipairs(GetPathPoints(@path)) do
         radius = math.max(radius,Length(v-center))
-      
+
       @center = center
       @radius = radius
 
@@ -351,19 +354,19 @@ class OdfHeader
   new: (file,name) =>
     @file = file
     @header = name
-  
+
   getProperty: (...) =>
     return GetODFString(@file,@header,...)
 
   getInt: (...) =>
     return GetODFInt(@file,@header,...)
-    
+
   getBool: (...) =>
     return GetODFBool(@file,@header,...)
-    
+
   getFloat: (...) =>
     return GetODFFloat(@file,@header,...)
-    
+
   getVector: (...) =>
     return str2vec(@getProperty(...) or "")
 
@@ -383,11 +386,11 @@ class OdfFile
     @name = filename
     @file = OpenODF(filename)
     @headers = {}
-  
+
   getHeader: (name) =>
     @headers[name] = @headers[name] or OdfHeader(@file,name)
     return @headers[name]
-  
+
   getInt: (header,...) =>
     @getHeader(header)\getInt(...)
 
@@ -410,7 +413,7 @@ class OdfFile
 --Other functions
 normalWeapons = {"cannon","machinegun","thermallauncher","imagelauncher", "snipergun"}
 dispenserWeps = {
-  radarlauncher: {"RadarLauncherClass", "objectClass"}, 
+  radarlauncher: {"RadarLauncherClass", "objectClass"},
   dispenser: {"DispenserClass", "objectClass"}
 }
 
@@ -436,17 +439,17 @@ getWepDamage = (odf using nil) ->
   ord = getWepOrdnance(odf)
   if ord
     ordFile = OdfFile(ord)
-    return ordFile\getInt("OrdnanceClass","damageBallistic") + 
-      ordFile\getInt("OrdnanceClass","damageConcussion") + 
-      ordFile\getInt("OrdnanceClass","damageFlame") + 
+    return ordFile\getInt("OrdnanceClass","damageBallistic") +
+      ordFile\getInt("OrdnanceClass","damageConcussion") +
+      ordFile\getInt("OrdnanceClass","damageFlame") +
       ordFile\getInt("OrdnanceClass","damageImpact")
-      
+
   return 0
 
 getWepDelay = (odf using nil) ->
   f = OdfFile(odf)
   wepc = f\getProperty("WeaponClass", "classLabel")
-  if isIn(wepc, normalWeapons) 
+  if isIn(wepc, normalWeapons)
     d1 = f\getFloat("LauncherClass", "shotDelay", 0)
     return d1 > 0 and d1 or f\getFloat("CannonClass", "shotDelay", 0)
   elseif wepc == "beamgun"
@@ -528,15 +531,15 @@ class Module
     data = ...
     for i, v in pairs(@submodules)
       protectedCall(v,"load",unpack(data[i]))
-  
+
   gameKey: (...) =>
     proxyCall(@submodules,"gameKey", ...)
 
-  receive: (...) => 
+  receive: (...) =>
     proxyCall(@submodules,"receive", ...)
 
   command: (...) =>
-    proxyCall(@submodules,"command", ...) 
+    proxyCall(@submodules,"command", ...)
 
   useModule: (cls) =>
     inst = cls(@)
@@ -559,7 +562,7 @@ createClass = (name, methods, parent) ->
     setmetatable(_base, parent.__base)
 
   _class = {
-    __init: (...) => 
+    __init: (...) =>
       if methods.new
         methods.new(@,...)
       elseif _class.__parent
@@ -571,7 +574,7 @@ createClass = (name, methods, parent) ->
     __inherited: methods.__inherited
   }
   _base.super = (name,...) =>
-    _class.__parent[name](@,...) 
+    _class.__parent[name](@,...)
 
 
   _class = setmetatable(_class, {
@@ -581,11 +584,11 @@ createClass = (name, methods, parent) ->
       if val == nil then
         _parent = rawget(@, "__parent")
         if _parent then
-          return _parent[name]    
+          return _parent[name]
       else
         return val
 
-    __call: (...) => 
+    __call: (...) =>
       _self = setmetatable({}, _base)
       @.__init(_self, ...)
       return _self
@@ -628,5 +631,6 @@ namespace("utils", Module, Timer, Area)
   :isNullPos,
   :Store,
   :getWepDps,
-  :compareTables
+  :compareTables,
+  :copyList
 }
