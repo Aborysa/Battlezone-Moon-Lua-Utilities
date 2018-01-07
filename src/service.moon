@@ -30,6 +30,12 @@ class ServiceManager
       
     return @serviceRequests[name]
 
+  getServices: (...) =>
+   return Observable.zip([@getService(name) for name in *{...}])
+
+  getServicesSync: (...) =>
+    return unpack([@getServicesSync(name) for name in *{...}])
+
 return {
   :ServiceManager
 }

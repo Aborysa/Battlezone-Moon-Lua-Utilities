@@ -28,8 +28,9 @@ getRuntimeState = (inst, state) ->
 
 
 class RuntimeController extends Module
-  new: (...) =>
-    super(...)
+  new: (parent, serviceManager) =>
+    super(parent, serviceManager)
+    @serviceManager = serviceManager
     @intervals = {}
     @nextIntervalId = 1
     @nextRoutineId = 1
@@ -72,7 +73,11 @@ class RuntimeController extends Module
     
     id = @nextRoutineId
     @nextRoutineId += 1
-    inst = cls((...) -> @clearRoutine(id, ...))
+    props = {
+      terminate: (...) -> @clearRoutine(id, ...),
+      serviceManager: @serviceManager
+    }
+    inst = cls(props)
     setRuntimeState(inst, 1)
     @routines[id] = inst
     protectedCall(inst, "routineWasCreated", ...)
@@ -136,7 +141,11 @@ class RuntimeController extends Module
     @nextRoutineId = data.nextId
     for rid, routine in pairs(data.routineData)
       cls = @classes[routine.clsName]
-      inst = cls((...) -> @clearRoutine(rid, ...))
+      props = {
+        terminate: (...) -> @clearRoutine(rid, ...),
+        serviceManager: @serviceManager
+      }
+      inst = cls(props)
       protectedCall(inst,"load",unpack(routine.rdata))
       protectedCall(inst,"postInit")
       @routines[rid] = inst

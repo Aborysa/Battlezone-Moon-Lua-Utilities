@@ -26,6 +26,7 @@ export Send = (...) ->
     _Send(...)
 
 
+
 class NetworkInterface
   new: (interface_id, to) =>
     @id = interface_id
@@ -209,6 +210,8 @@ class BroadcastSocket extends Socket
   send: (...) =>
     super(...)
     @receiveSubject\onNext(...)
+
+
 
 
 class NetworkInterfaceManager

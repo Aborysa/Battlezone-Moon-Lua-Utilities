@@ -58,13 +58,9 @@ ObjCfg = (cls) ->
 
 -- basic unit component
 class UnitComponent
-  new: (handle, socketSub) =>
+  new: (handle, props) =>
     @store = Store()
     @handle = Handle(handle)
-    if socketSub
-      socketSub\subscribe((socket) -> 
-        @_socket = socket
-      )
 
   getHandle: () =>
     return @handle
@@ -84,50 +80,26 @@ class UnitComponent
   load: (state) =>
     @store = Store(state)
 
-  componentWillUnmount: () =>
-    if @_socket
-      @_socket\waitClose()
 
 
 -- unit component with auto sync
 class SyncedUnitComponent extends UnitComponent
-  new: (handle, socketSub) =>
-    super(handle, socketSub)
+  new: (handle, props) =>
+    super(handle, props)
     @remote = IsRemote(handle)
-
-    if socketSub
-      socketSub\subscribe((socket) -> 
-        print("Got socket!")
-        @socket = socket
-        socket\onReceive()\subscribe(@\receive)
-        if not @remote
-          print("Not Remote!")
-          @getStore()\onKeyUpdate()\subscribe((key, value) ->
-            print("Sending",key, value)
-            socket\send("SET", key, value, 1, false, true, "Crap", {key: value})
-          )
-      )
-
-
-
-  receive: (...) =>
-    what, a, b = ...
-    print("Recived", ...)
-    if what == "SET"
-      print("Setting",a,b)
-      @getStore()\set(a, b)
 
 
 class ComponentManager extends Module
   new: (parent, serviceManager) =>
-    super(parent)
+    super(parent, serviceManager)
     @classes = {}
     --@objbyclass = {}
     @objbyhandle = {}
     @remoteHandles = {}
     @waitToAdd = {}
+    @serviceManager = serviceManager
     serviceManager\getService("bzutils.net")\subscribe( (net) -> 
-      @net = net
+      @net: net
     )
   
   start: (...) =>
@@ -226,21 +198,25 @@ class ComponentManager extends Module
     c = ObjCfg(cls)
     instance = nil
     socketSub = nil
-
+    props = {
+      serviceManager: @serviceManager
+    }
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
       if (c.remoteCls)
-        print("Creating remote instance")
-        socketSub = @net\getRemoteSocket("OBJ",handle,getFullName(cls))
-        instance = c.remoteCls(handle, socketSub)
+        props.requestSocket = () ->
+          return @net\getRemoteSocket("OBJ",handle,getFullName(cls))
+
+        instance = c.remoteCls(handle, props)
       else
         --a bit hacky
         instance = {}
     else
       if (IsNetGame() and c.remoteCls)
-        socketSub = Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls)))
-      print("Creating instance", cls, handle)
-      instance = cls(handle, socketSub)
+        props.requestSocket = () ->
+          return Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls)))
+
+      instance = cls(handle, props)
     --table.insert(@objbyclass[cls],instance)
     applyMeta(instance,{
       parent: cls
