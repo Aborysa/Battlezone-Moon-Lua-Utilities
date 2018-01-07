@@ -7,4 +7,4 @@ all:
 
 build-win:
 	$(CXX) $(FLAGS) ./src/*
-	cmd /C "for /R ./dist %F in (*) do move /Y %F ./dist"
+	cmd "/C for /R dist %F in (*) do move /Y %F dist"
