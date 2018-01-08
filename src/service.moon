@@ -2,24 +2,25 @@
 
 rx = require("rx")
 
-import AsyncSubject from rx
+import AsyncSubject, Observable from rx
 
 class ServiceManager
   new: () =>
-    @serivces = {}
+    @services = {}
     @serviceRequests = {}
 
   createService: (name, service) =>
     if @services[name] ~= nil
       error("Service already registered")
-    @serivces[name] = service
+    @services[name] = service
+    if @serviceRequests[name] == nil
+      @serviceRequests[name] = AsyncSubject.create()
     req = @serviceRequests[name]
-    if req
-      req\onNext(service)
-      req\onCompleted()
+    req\onNext(service)
+    req\onCompleted()
 
   hasService: (name) =>
-    @serivces[name] ~= nil
+    @services[name] ~= nil
 
   getServiceSync: (name) =>
     return @services[name]
@@ -27,11 +28,11 @@ class ServiceManager
   getService: (name) =>
     if @serviceRequests[name] == nil
       @serviceRequests[name] = AsyncSubject.create()
-      
+
     return @serviceRequests[name]
 
   getServices: (...) =>
-   return Observable.zip([@getService(name) for name in *{...}])
+    return Observable.zip(unpack([@getService(name) for name in *{...}]))
 
   getServicesSync: (...) =>
     return unpack([@getServicesSync(name) for name in *{...}])

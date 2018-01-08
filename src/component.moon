@@ -99,7 +99,7 @@ class ComponentManager extends Module
     @waitToAdd = {}
     @serviceManager = serviceManager
     serviceManager\getService("bzutils.net")\subscribe( (net) -> 
-      @net: net
+      @net = net
     )
   
   start: (...) =>

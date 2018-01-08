@@ -20,14 +20,14 @@ bz1Setup = () ->
   serviceManager = service.ServiceManager()
   core = Module()
   event = core\useModule(EventDispatcherModule, serviceManager)
-  net = core\useModule(EventDispatcherModule, serviceManager)
+  net = core\useModule(NetworkInterfaceManager, serviceManager)
   componentManager = core\useModule(ComponentManager, serviceManager)
   runtimeManager = core\useModule(RuntimeController, serviceManager)
 
-  serviceManager\createService(event, "bzutils.bzapi")
-  serviceManager\createService(net, "bzutils.net")
-  serviceManager\createService(componentManager, "bzutils.component")
-  serviceManager\createService(runtimeManager, "bzutils.runtime")
+  serviceManager\createService("bzutils.bzapi", event)
+  serviceManager\createService("bzutils.net", net)
+  serviceManager\createService("bzutils.component", componentManager)
+  serviceManager\createService("bzutils.runtime", runtimeManager)
 
   return {
     :core,
@@ -56,5 +56,6 @@ return {
   :component,
   :runtime,
   :event,
-  :service
+  :service,
+  :net
 }
