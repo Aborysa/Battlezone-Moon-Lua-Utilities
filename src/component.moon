@@ -201,11 +201,14 @@ class ComponentManager extends Module
     props = {
       serviceManager: @serviceManager
     }
+    socketCount = 0
+        
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
       if (c.remoteCls)
         props.requestSocket = () ->
-          return @net\getRemoteSocket("OBJ",handle,getFullName(cls))
+          socketCount += 1
+          return @net\getRemoteSocket("OBJ",handle,getFullName(cls), socketCount)
 
         instance = c.remoteCls(handle, props)
       else
@@ -214,7 +217,8 @@ class ComponentManager extends Module
     else
       if (IsNetGame() and c.remoteCls)
         props.requestSocket = () ->
-          return Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls)))
+          socketCount += 1
+          return Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls), socketCount))
 
       instance = cls(handle, props)
     --table.insert(@objbyclass[cls],instance)
