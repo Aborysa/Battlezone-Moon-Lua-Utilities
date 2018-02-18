@@ -3,7 +3,7 @@ utils = require("utils")
 rx = require("rx")
 
 import OdfFile, getWepDps from utils
-import Subject, AsyncSubject from rx
+import Subject, ReplaySubject, AsyncSubject from rx
 
 
 copyObject = (handle, odf, team, location, keepWeapons=false, kill=false, fraction=true) ->

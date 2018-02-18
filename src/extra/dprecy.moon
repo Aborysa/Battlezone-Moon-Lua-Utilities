@@ -17,8 +17,8 @@ import ObjectTracker, Handle from bz_handle
 
 
 class DeployableProducer extends UnitComponent
-  new: (handle, socket) =>
-    super(handle, socket)
+  new: (handle, props) =>
+    super(handle, props)
     @deployed = @getHandle()\isDeployed()
     @geysir = nil
     @objTracker = ObjectTracker(handle)

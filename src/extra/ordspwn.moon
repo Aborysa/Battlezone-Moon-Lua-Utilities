@@ -20,8 +20,8 @@ import ObjectTracker, Handle from bz_handle
 
 
 class OrdnanceSpawner extends UnitComponent
-  new: (handle, socket) =>
-    super(handle, socket)
+  new: (handle, props) =>
+    super(handle, props)
     @objTracker = ObjectTracker(handle)
     @ammoSub = @objTracker\onChange("ammo")\subscribe((ammo) -> 
       if ammo <= 0 and @getHandle()\getMaxAmmo() > 0
