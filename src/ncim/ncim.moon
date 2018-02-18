@@ -10,7 +10,7 @@ rx = require("rx")
 
 import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
 import UnitComponent, SyncedUnitComponent, ComponentConfig from component
-import Observable, AsyncSubject from rx
+import Observable, ReplaySubject from rx
 import ObjectTracker, Handle from bz_handle
 
 Turret = nil
@@ -21,23 +21,22 @@ ReactorDamaged = nil
 
 
 class TurretTower extends UnitComponent
-  new: (handle, socketSub) =>
-    super(handle, socketSub)
+  new: (handle, props) =>
+    super(handle, props)
     
     @req = nil
     @setState({
       turret: false
     })
     
-
-    if socketSub
-      socketSub\subscribe((socket) ->
+    if props.requestSocket
+      props.requestSocket()\subscribe(socket ->
         print("Got socket")
         @socket = socket
         socket\onReceive()\subscribe(@\receive)
         socket\onConnect()\subscribe(() -> @socket\send("SET_TURR", @state!.turret))
+      
       )
-
 
   receive: (what, who) =>
     if what == "REQ_TOWER"
@@ -83,10 +82,13 @@ class TurretTower extends UnitComponent
   hasTurret: () =>
     return IsAlive(@state!.turret)
 
+  componentWillUnmount: () =>
+    if @socket
+      @socket\closeOnEmpty()
 
 class RemoteTurret extends SyncedUnitComponent
-  new: (handle, socketSub) =>
-    super(handle, socketSub)
+  new: (handle, props) =>
+    super(handle, props)
     @setState({
       turretTower: false,
       deployed: false
@@ -101,8 +103,8 @@ class RemoteTurret extends SyncedUnitComponent
     )
 
 class Turret extends RemoteTurret
-  new: (handle, socketSub) =>
-    super(handle, socketSub)
+  new: (handle, props) =>
+    super(handle, props)
     @tracker = ObjectTracker(handle)
     @tracker\onChange("command")\subscribe(@\_commandChanged)
     @tracker\onChange("who")\subscribe(@\_whoChange)
@@ -203,8 +205,8 @@ class Turret extends RemoteTurret
 
 
 class ReactorHealthy extends UnitComponent
-  new: (handle) =>
-    super(handle)
+  new: (handle, props) =>
+    super(handle, props)
     h = @getHandle!
     @settings = {
       damagedOdf: h\getProperty("ReactorClass", "damagedReactor"),
@@ -239,8 +241,8 @@ class ReactorHealthy extends UnitComponent
     proxyCall(@sub,"unsubscribe")
 
 class ReactorDamagedRemote extends UnitComponent
-  new: (handle) =>
-    super(handle)
+  new: (handle, props) =>
+    super(handle, props)
     h = @getHandle!
 
     @tracker = ObjectTracker(handle)
@@ -296,8 +298,8 @@ class ReactorDamagedRemote extends UnitComponent
     proxyCall(@sub,"unsubscribe")
 
 class ReactorDamaged extends ReactorDamagedRemote
-  new: (handle, socketSub) =>
-    super(handle, socketSub)
+  new: (handle, props) =>
+    super(handle, props)
     h = @getHandle!
     table.insert(@sub,@tracker\onChange("health")\subscribe(@\_checkHealth)) 
     --table.insert(@sub,@tracker\onDestroy()\subscribe(@\boom))

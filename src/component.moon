@@ -27,12 +27,13 @@
 
 utils = require("utils")
 bz_handle = require("bz_handle")
-
+net = require("net")
 rx = require("rx")
 
-import Observable from rx
+import Observable, Subject, ReplaySubject, AsyncSubject  from rx
 import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
 import Handle from bz_handle
+import SharedStore, BroadcastSocket from net
 
 ComponentConfig = (cls,cfg) ->
   applyMeta(cls,{
@@ -83,8 +84,53 @@ class UnitComponent
 class SyncedUnitComponent extends UnitComponent
   new: (handle, props) =>
     super(handle, props)
-    @remote = IsRemote(handle)
+    @props = props
+    @localStore = Store()
+    @remote = props.remote
+    @storeSub = ReplaySubject.create(1)
 
+  postInit: () =>
+    print("Req socket")
+    if @props.requestSocket
+      @props.requestSocket(nil)\subscribe((socket) ->
+        print("Got socket")
+        @socket = socket
+        @remoteStore = SharedStore(@localStore\getState(), socket)
+        @remoteStore\onKeyUpdate()\subscribe((k,v) -> 
+          print("SyncedUnitComponent update", k, v)
+        )
+        @storeSub\onNext(@remoteStore)
+        --@storeSub\onCompleted()
+      )
+    else
+      @storeSub\onNext(@localStore)
+      --@storeSub\onCompleted()
+
+  setState: (state) =>
+    if @remoteStore
+      @remoteStore\assign(state)
+    else
+      @localStore\assign(state)
+
+  getStore: () =>
+    @storeSub
+    --return @remoteStore or @localStore
+  
+  state: () =>
+    @remoteStore\getState()
+
+
+  componentWillUnmount: () =>
+    @storeSub\onCompleted()
+    if @socket
+      @socket\close()
+    
+
+  save: () =>
+    return @state()
+  
+  load: (state) =>
+    @localStore = Store(state)
 
 class ComponentManager extends Module
   new: (parent, serviceManager) =>
@@ -108,8 +154,7 @@ class ComponentManager extends Module
     @waitToAdd[handle] = nil
     objs = @addHandle(handle)
     proxyCall(objs, "postInit")
-    if not (IsNetGame() and IsRemote(handle))
-      proxyCall(objs,"unitDidSpawn")
+    proxyCall(objs,"unitDidSpawn")
 
   update: (...) =>
     super\update(...)
@@ -121,16 +166,15 @@ class ComponentManager extends Module
       --if(not @remoteHandles[i])
       if IsValid(i) and IsNetGame()
         -- objects locality has changed
-        if (@remoteHandles[i] ~= nil) ~= (IsRemote(i) or not IsLocal(i)) 
-          rem = IsRemote(i)
-          @remoteHandles[i] = rem
+        if (not @remoteHandles[i]) ~= (not IsRemote(i))
+          @remoteHandles[i] = IsRemote(i) or nil
           proxyCall(v, "unitWillTransfere")
           @objbyhandle[i] = {}
           for obj in *v
             m = getMeta(obj)
             cname = getFullName(m.parent)
             if ObjCfg(m.parent).remoteCls
-              cls = rem and @classes[cname]
+              cls = @classes[cname]
               inst = @createInstance(i,cls)
               protectedCall(inst, "load", protectedCall(obj, "save"))
               protectedCall(obj, "componentWillUnmount")
@@ -143,14 +187,14 @@ class ComponentManager extends Module
       v = @objbyhandle[i]
       
       proxyCall(v,"update",...)
-      --else
-        --print("Invalid", i)
+
 
   addObject: (handle,...) =>
     super\addObject(handle)
     @_regHandle(handle)
 
   createObject: (handle,...) =>
+    print("create object")
     super\createObject(handle,...)
     @waitToAdd[handle] = true
 
@@ -195,7 +239,8 @@ class ComponentManager extends Module
     instance = nil
     socketSub = nil
     props = {
-      serviceManager: @serviceManager
+      serviceManager: @serviceManager,
+      remote: IsNetGame() and IsRemote(handle)
     }
     socketCount = 0
         
@@ -204,7 +249,9 @@ class ComponentManager extends Module
       if (c.remoteCls)
         props.requestSocket = () ->
           socketCount += 1
-          return @net\getRemoteSocket("OBJ",handle,getFullName(cls), socketCount)
+          return @net\onNetworkReady()\flatMap(() -> 
+            return @net\getRemoteSocket("OBJ",handle,getFullName(cls), socketCount)
+          )
 
         instance = c.remoteCls(handle, props)
       else
@@ -212,15 +259,17 @@ class ComponentManager extends Module
         instance = {}
     else
       if (IsNetGame() and c.remoteCls)
-        props.requestSocket = () ->
+        props.requestSocket = (type) ->
           socketCount += 1
-          return Observable.of(@net\openSocket(0,"OBJ",handle,getFullName(cls), socketCount))
-
+          return @net\onNetworkReady()\map(() ->
+            return @net\openSocket(0, type,"OBJ",handle,getFullName(cls), socketCount)
+          )
       instance = cls(handle, props)
     --table.insert(@objbyclass[cls],instance)
     applyMeta(instance,{
       parent: cls
     })
+    
     @objbyhandle[handle] = @objbyhandle[handle] or {}
     table.insert(@objbyhandle[handle],instance)
     return instance

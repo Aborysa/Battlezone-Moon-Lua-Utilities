@@ -156,7 +156,7 @@ class Socket
   isOpen: () =>
     @alive
   
-  waitClose: () =>
+  closeOnEmpty: () =>
     @closeWhenEmpty = true
 
   close: () =>
@@ -222,7 +222,7 @@ class NetworkInterfaceManager
     -- the next interface id
     @nextInterface_id = 0
     -- subject that fires once networking is ready
-    @networkReadySubject = AsyncSubject.create()
+    @networkReadySubject = ReplaySubject.create(1)
     -- subject that fires when a new host is selected
     @hostMigrationSubject = Subject.create()
     @isHostMigrating = false
@@ -448,7 +448,7 @@ class NetworkInterfaceManager
       print("Network is now ready")
       @network_ready = true
       @networkReadySubject\onNext()
-      @networkReadySubject\onCompleted()
+      --@networkReadySubject\onCompleted()
 
   start: () =>
     if IsNetGame() and not @network_ready and @playerCount <= 1
@@ -457,14 +457,14 @@ class NetworkInterfaceManager
       @network_ready = true
       @hostPlayer = @localPlayer
       @networkReadySubject\onNext()
-      @networkReadySubject\onCompleted()
+      --@networkReadySubject\onCompleted()
     elseif not IsNetGame()
       @machine_id = 0
       @localPlayer = {name: "Player", team: 1, id: 0}
       @hostPlayer = @localPlayer
       @network_ready = true
       @networkReadySubject\onNext()
-      @networkReadySubject\onCompleted()
+      --@networkReadySubject\onCompleted()
    
   update: (dtime) =>
     for i, v in ipairs(@requestSocketsIds)
@@ -516,29 +516,40 @@ class SharedStore extends Store
     super(initial_state)
     @socket = socket
     @internal_store = Store(initial_state)
-
+    @active = true
     --@extUpdate =  --super\onStateUpdate()\merge()
     --@extKeyUp = --super\onKeyUpdate()\merge(@internal_store\onKeyUpdate())
     --@internal_store\onKeyUpdate()\subscribe((key, value) ->
     --  print("Internal store set", key, value)
     --)
-    super\onKeyUpdate()\subscribe((...) ->
-      @socket\send("SET", ...)
-      @internal_store\set(...)
+    super\onKeyUpdate()\subscribe((k, v) ->
+      if not @active return
+      print("Sending", k, v)
+      if v == nil
+        @socket\send("DELETE", k)
+        @internal_store\delete(k)
+      else
+        @socket\send("SET", k, v)
+        @internal_store\set(k, v)
     )
 
     @socket\onReceive()\subscribe((what, ...) ->
+      if not @active return
       if what == "SET"
         @silentSet(...)
         @internal_store\set(...)
-        
+      elseif what == "DELETE"
+        @silentDelete(...)
+        @internal_store\delete(...)
     )
 
-    @socket\onConnect()\subscribe(() -> 
-      s = @getState()
-      for i, v in pairs(s)
-        @socket\send("SET", i, v)
-    )
+    @socket\onConnect()\subscribe(
+      () -> 
+        if not @active return
+        s = @getState()
+        for i, v in pairs(s)
+          @socket\send("SET", i, v)
+      nil,() -> @active = false)
 
   onStateUpdate: () =>
     @internal_store\onStateUpdate()
