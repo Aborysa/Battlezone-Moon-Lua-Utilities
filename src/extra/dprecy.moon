@@ -1,7 +1,6 @@
 -- "Deployabe producer"
 -- Producer that can be deployed anywhere
 
-
 bzutils = require("bzutils")
 
 utils = bzutils.utils
@@ -11,14 +10,11 @@ bz_handle = bzutils.bz_handle
 
 import namespace, isIn, assignObject, proxyCall, isNullPos, local2Global, global2Local from utils
 import UnitComponent, ComponentConfig from component
-
 import ObjectTracker, Handle from bz_handle
 
-
-
 class DeployableProducer extends UnitComponent
-  new: (handle, socket) =>
-    super(handle, socket)
+  new: (handle, props) =>
+    super(handle, props)
     @deployed = @getHandle()\isDeployed()
     @geysir = nil
     @objTracker = ObjectTracker(handle)
