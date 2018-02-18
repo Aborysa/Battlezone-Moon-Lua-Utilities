@@ -19,9 +19,6 @@
 -- unitDidTransfere - called after postInit when a component has been attached to a handle due to switching machine
 -- update - runs ~every update
 
-
---UnitBehaviour:
-
 -- only runs for ai controlled craft
 -- has listeners to the handle's state
 -- only runs locally
@@ -46,7 +43,7 @@ ComponentConfig = (cls,cfg) ->
       componentName: "",
       remoteCls: false,
       customTest: () -> return false
-    },cfg) 
+    },cfg)
   })
   return cls
 
@@ -156,7 +153,6 @@ class ComponentManager extends Module
   createObject: (handle,...) =>
     super\createObject(handle,...)
     @waitToAdd[handle] = true
-    --proxyCall(@addHandle(...),"init")
 
   deleteObject: (...) =>
     super\deleteObject(...)
