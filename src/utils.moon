@@ -1,6 +1,6 @@
 Rx = require("rx")
 
-import Subject, ReplaySubject from Rx
+import Subject, ReplaySubject, AsyncSubject from Rx
 
 --Consts
 metadata = setmetatable({},{__mode: "k"})
@@ -215,6 +215,14 @@ class Store
   set: (key, value) =>
     @assign({[key]: value})
 
+  delete: (...) =>
+    p_state = @state
+    @state = assignObject({}, @state)
+    for i, v in ipairs({...})
+      @state[v] = nil
+      @keyUpdateSubject\onNext(v, nil)
+    @updateSubject\onNext(@state, p_state)
+
   assign: (kv_pairs) =>
     p_state = @state
     @state = assignObject(@state, kv_pairs)
@@ -228,6 +236,11 @@ class Store
   silentAssign: (kv_pairs) =>
     p_state = @state
     @state = assignObject(@state, kv_pairs)
+
+  silentDelete: (...) =>
+    @state = assignObject({}, @state)
+    for i, v in ipairs({...})
+      @state[v] = nil
 
   getState: () =>
     @state
@@ -612,6 +625,18 @@ createClass = (name, methods, parent) ->
   return _class
 
 namespace("utils", Module, Timer, Area)
+
+_switchMap = (obs, func) ->
+  return Observable.create((observer) ->
+    obs\subscribe(
+      (...) ->
+        n = func(...)
+        print(n)
+        n\subscribe( (...) ->
+          observer\onNext(...)
+        )
+    )
+  )
 
 
 {
