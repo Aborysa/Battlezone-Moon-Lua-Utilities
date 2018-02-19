@@ -90,21 +90,14 @@ class SyncedUnitComponent extends UnitComponent
     @storeSub = ReplaySubject.create(1)
 
   postInit: () =>
-    print("Req socket")
     if @props.requestSocket
       @props.requestSocket(nil)\subscribe((socket) ->
-        print("Got socket")
         @socket = socket
         @remoteStore = SharedStore(@localStore\getState(), socket)
-        @remoteStore\onKeyUpdate()\subscribe((k,v) -> 
-          print("SyncedUnitComponent update", k, v)
-        )
         @storeSub\onNext(@remoteStore)
-        --@storeSub\onCompleted()
       )
     else
       @storeSub\onNext(@localStore)
-      --@storeSub\onCompleted()
 
   setState: (state) =>
     if @remoteStore
@@ -114,7 +107,7 @@ class SyncedUnitComponent extends UnitComponent
 
   getStore: () =>
     @storeSub
-    --return @remoteStore or @localStore
+
   
   state: () =>
     @remoteStore\getState()
@@ -247,10 +240,10 @@ class ComponentManager extends Module
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
       if (c.remoteCls)
-        props.requestSocket = () ->
+        props.requestSocket = (name) ->
           socketCount += 1
           return @net\onNetworkReady()\flatMap(() -> 
-            return @net\getRemoteSocket("OBJ",handle,getFullName(cls), socketCount)
+            return @net\getRemoteSocket("OBJ",handle,getFullName(cls), name~=nil and name or socketCount)
           )
 
         instance = c.remoteCls(handle, props)
@@ -259,10 +252,10 @@ class ComponentManager extends Module
         instance = {}
     else
       if (IsNetGame() and c.remoteCls)
-        props.requestSocket = (type) ->
+        props.requestSocket = (type, name) ->
           socketCount += 1
           return @net\onNetworkReady()\map(() ->
-            return @net\openSocket(0, type,"OBJ",handle,getFullName(cls), socketCount)
+            return @net\openSocket(0, type,"OBJ",handle,getFullName(cls), name~=nil and name or socketCount)
           )
       instance = cls(handle, props)
     --table.insert(@objbyclass[cls],instance)
