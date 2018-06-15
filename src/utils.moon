@@ -393,6 +393,9 @@ class OdfHeader
   getVector: (...) =>
     return str2vec(@getProperty(...) or "")
 
+  getValueAs: (parser, ...) =>
+    return parser(@getProperty(...) or "")
+
   getTable: (var,...) =>
     c = 1
     ret = {}
@@ -403,6 +406,10 @@ class OdfHeader
       n = @getProperty("#{var}#{c}",...)
       c += 1
     return ret
+
+  getTableOf: (parser, var, ...) =>
+    t = @getTable(var, ...)
+    return [parser(v) for i, v in ipairs(t)]
 
 class OdfFile
   new: (filename) =>
@@ -431,6 +438,12 @@ class OdfFile
 
   getVector: (header,...) =>
     @getHeader(header)\getVector(...)
+
+  getValueAs: (parser, header, ...) =>
+    @getHeader(header)\getValueAs(parser, ...)
+
+  getTableOf: (parser header, ...) =>
+    @getHeader(header)\getTableOf(parser, ...)
 
 
 --Other functions
