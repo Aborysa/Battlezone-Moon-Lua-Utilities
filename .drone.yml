@@ -19,9 +19,35 @@ pipeline:
       - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
       - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
       - mv /tmp/bzmoon2/* /tmp/bzmoon
-      - zip -j -r /tmp/bundle.zip /tmp/bzmoon -i '*.lua'
-      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_${DRONE_TAG}.zip || true
-      - \cp -f /tmp/bundle.zip /drone/deploy/bzmoon_latest.zip || true
+      - zip -j -r /tmp/bzmoon.zip /tmp/bzmoon -i '*.lua'
+
+  upload:
+    image: appleboy/drone-scp
+    host: faavne.no
+    username: root
+    secrets: [ssh_key]
+    key_path: /ssh/id_rsa
+    target:
+      - /tmp/
+    source:
+      - /tmp/bzmoon.zip
+    strip_components: 1
+
     volumes:
-      - /mnt/nginx-fs/files/public/bzmoon/:/drone/deploy
+      - /root/.ssh/id_rsa:/ssh/id_rsa
+
+
+  release:
+    group: deploy
+    image: appleboy/drone-ssh
+    host: faavne.no
+    username: root
+    key_path: /ssh/id_rsa
+    secrets: [ssh_key]
+    when:
+      event:
+        - tag
+    script:
+      - \cp -f /tmp/bzmoon.zip /mnt/nginx-fs/files/bzmoon/bzmoon_${DRONE_TAG}.zip || true
+      - \cp -f /tmp/bzmoon.zip /mnt/nginx-fs/files/bzmoon/bzmoon_latest.zip || true
 
