@@ -31,7 +31,7 @@ pipeline:
       - /tmp/
     source:
       - /tmp/bzmoon.zip
-    strip_components: 1
+    strip_components: 0
 
     volumes:
       - /root/.ssh/id_rsa:/ssh/id_rsa
