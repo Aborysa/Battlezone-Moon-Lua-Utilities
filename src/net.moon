@@ -261,7 +261,7 @@ class NetworkInterfaceManager
 
 
   getPlayerHandle: (team) =>
-    IsValid(GetPlayerHandle(team)) and GetPlayerHandle(team) or @playerHandles[team]
+    IsValid(GetPlayerHandle(team)) and GetPlayerHandle(team) or @playerHandles[team or 0]
 
   getTarget: (handle) =>
     IsValid(GetTarget(handle)) and GetTarget(handle) or @playerTargets[handle]
@@ -447,7 +447,6 @@ class NetworkInterfaceManager
     elseif t == "Q"
       p = @getPlayer(f)
       target = ...
-      print("Player handle or target updated", p.team, a, GetPlayerHandle(p.team), target)
       if p
         @playerHandles[p.team] = a or GetPlayerHandle(p.team)
         ph = @getPlayerHandle(p.team)
