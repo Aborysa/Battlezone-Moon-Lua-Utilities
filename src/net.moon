@@ -207,9 +207,6 @@ class BroadcastSocket extends Socket
     super(...)
     @onReceive()\subscribe(super\send)
     
-  send: (...) =>
-    super(...)
-    @receiveSubject\onNext(...)
 
 
 
