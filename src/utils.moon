@@ -442,7 +442,7 @@ class OdfFile
   getValueAs: (parser, header, ...) =>
     @getHeader(header)\getValueAs(parser, ...)
 
-  getTableOf: (parser header, ...) =>
+  getTableOf: (parser, header, ...) =>
     @getHeader(header)\getTableOf(parser, ...)
 
 
