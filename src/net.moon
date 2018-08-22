@@ -236,6 +236,7 @@ class NetworkInterfaceManager
     @hostPlayer = nil
 
     @playerHandles = {}
+    @playerTargets = {}
 
     @allSockets = {}
     @playerCount = 0
@@ -243,6 +244,7 @@ class NetworkInterfaceManager
     @lastPlayer = {}
 
     @phandle = GetPlayerHandle()
+    @ptarget = GetUserTarget()
 
   getLocalPlayer: () =>
     if not @isNetworkReady
@@ -257,6 +259,9 @@ class NetworkInterfaceManager
 
   getPlayerHandle: (team) =>
     IsValid(GetPlayerHandle(team)) and GetPlayerHandle(team) or @playerHandles[team or 0]
+
+  getTarget: (handle) =>
+    IsValid(GetTarget(handle)) and GetTarget(handle) or @playerTargets[handle]
 
   isNetworkReady: () =>
     return @network_ready
@@ -429,6 +434,7 @@ class NetworkInterfaceManager
         @localPlayer = @players[@machine_id]
         if IsHosting()
           @hostPlayer = @localPlayer
+
     elseif t == "H"
       @hostPlayer = @players[f] or {id: f, name: "Unknown", team: 0}
       if @isHostMigrating
@@ -440,6 +446,9 @@ class NetworkInterfaceManager
       target = ...
       if p
         @playerHandles[p.team] = a or GetPlayerHandle(p.team)
+        ph = @getPlayerHandle(p.team)
+        if IsValid(ph)
+          @playerTargets[ph] = target
     
     if @hostPlayer~=nil and @machine_id~=-1 and not @network_ready
       print("Network is now ready")
@@ -477,10 +486,11 @@ class NetworkInterfaceManager
       Send(0, "H")
 
     ph = GetPlayerHandle()
-    if ph ~= @phandle
-      Send(0, "Q", ph)
-    @phandle = GetPlayerHandle()
-
+    pt = GetUserTarget()
+    if ph ~= @phandle or pt ~= @ptarget
+      Send(0, "Q", ph, pt)
+    @phandle = ph
+    @ptarget = pt
 
   addPlayer: (id, name, team) =>
     print("Player added!",id,name,team)
@@ -489,6 +499,7 @@ class NetworkInterfaceManager
     if IsHosting() then
       Send(id, "H")
     Send(id, "I", id)
+    Send(id, "Q", @phandle, @ptarget)
 
   createPlayer: (id, name, team) =>
     @playerCount += 1
