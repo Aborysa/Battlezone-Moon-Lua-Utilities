@@ -6,8 +6,10 @@ net = require("net").net
 
 rx = require("rx")
 
+Module = require("module")
+
 import Observable from rx
-import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
+import applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
 import Handle from bz_handle
 
 
@@ -16,14 +18,14 @@ class CommandManager extends Module
   new: (parent) =>
     super(parent)
     @commands = {}
-  
+
   start: (...) =>
 
 
   update: (...) =>
 
   command: (command, a = "") =>
-    ret = {pcall(() -> 
+    ret = {pcall(() ->
       args = {}
       for arg in a:gmatch("%w+")
         table.insert(args, arg)

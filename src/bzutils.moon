@@ -6,6 +6,7 @@ component = require("component")
 bz_handle = require("bz_handle")
 runtime = require("runtime")
 
+Module = require("module")
 
 import Module from utils
 

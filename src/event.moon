@@ -1,7 +1,7 @@
 utils = require("utils")
 Rx = require("rx")
 
-import Module from utils
+Module = require("module")
 import Subject from Rx
 
 
@@ -11,10 +11,10 @@ class Event
     @source = source
     @target = target
     @args = table.pack(...)
-  
+
   getArgs: () =>
     unpack(@args)
-  
+
   getName: () =>
     @name
 
@@ -44,7 +44,7 @@ class EventDispatcherModule extends Module
   new: (...) =>
     super(...)
     @dispatcher = EventDispatcher()
-  
+
   getDispatcher: () =>
     @dispatcher
 

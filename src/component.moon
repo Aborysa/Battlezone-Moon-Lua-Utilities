@@ -30,8 +30,10 @@ bz_handle = require("bz_handle")
 net = require("net")
 rx = require("rx")
 
+Module = require("module")
+
 import Observable, Subject, ReplaySubject, AsyncSubject  from rx
-import Module, applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
+import applyMeta, getMeta, proxyCall, protectedCall, namespace, instanceof, isIn, assignObject, getFullName, Store from utils
 import Handle from bz_handle
 import SharedStore, BroadcastSocket from net
 
@@ -74,7 +76,7 @@ class UnitComponent
 
   save: () =>
     return @state()
-  
+
   load: (state) =>
     @store = Store(state)
 
@@ -108,7 +110,7 @@ class SyncedUnitComponent extends UnitComponent
   getStore: () =>
     @storeSub
 
-  
+
   state: () =>
     @remoteStore\getState()
 
@@ -117,11 +119,11 @@ class SyncedUnitComponent extends UnitComponent
     @storeSub\onCompleted()
     if @socket
       @socket\close()
-    
+
 
   save: () =>
     return @state()
-  
+
   load: (state) =>
     @localStore = Store(state)
 
@@ -134,15 +136,15 @@ class ComponentManager extends Module
     @remoteHandles = {}
     @waitToAdd = {}
     @serviceManager = serviceManager
-    serviceManager\getService("bzutils.net")\subscribe( (net) -> 
+    serviceManager\getService("bzutils.net")\subscribe( (net) ->
       @net = net
     )
-  
+
   start: (...) =>
     super\start(...)
     for v in AllObjects()
       proxyCall(@addHandle(v),"postInit")
-  
+
   _regHandle: (handle) =>
     @waitToAdd[handle] = nil
     objs = @addHandle(handle)
@@ -173,12 +175,12 @@ class ComponentManager extends Module
               protectedCall(obj, "componentWillUnmount")
               protectedCall(inst, "postInit")
               protectedCall(inst, "unitDidTransfere")
-              
+
             else
               table.insert(@objbyhandle, obj)
 
       v = @objbyhandle[i]
-      
+
       proxyCall(v,"update",...)
 
 
@@ -236,13 +238,13 @@ class ComponentManager extends Module
       remote: IsNetGame() and IsRemote(handle)
     }
     socketCount = 0
-        
+
     if (IsNetGame() and IsRemote(handle))
       @remoteHandles[handle] = true
       if (c.remoteCls)
         props.requestSocket = (name) ->
           socketCount += 1
-          return @net\onNetworkReady()\flatMap(() -> 
+          return @net\onNetworkReady()\flatMap(() ->
             return @net\getRemoteSocket("OBJ",handle,getFullName(cls), name~=nil and name or socketCount)
           )
 
@@ -262,7 +264,7 @@ class ComponentManager extends Module
     applyMeta(instance,{
       parent: cls
     })
-    
+
     @objbyhandle[handle] = @objbyhandle[handle] or {}
     table.insert(@objbyhandle[handle],instance)
     return instance
@@ -274,14 +276,14 @@ class ComponentManager extends Module
     if objs
       proxyCall(objs,"unitWasRemoved")
       proxyCall(objs,"componentWillUnmount")
-      
+
   save: (...) =>
     componentData = {}
     for i, v in pairs(@objbyhandle)
       --componentData[i] = componentData[i] or {}
       componentData[i] = {getFullName(obj.__class), table.pack(protectedCall(obj, "save")) for obj in *v}
       --for obj in *v
-      --  componentData[i][getFullName(obj.__class)] = table.pack(obj\save()) 
+      --  componentData[i][getFullName(obj.__class)] = table.pack(obj\save())
 
     return {
       mdata: super\save(...)
@@ -298,7 +300,7 @@ class ComponentManager extends Module
         inst = @createInstance(i, cls)
         protectedCall(inst,"load",unpack(data))
         protectedCall(inst,"postInit")
-        
+
 namespace("component",ComponentManager, UnitComponent)
 
 

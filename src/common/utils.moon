@@ -531,61 +531,6 @@ spawnInFormation = (formation,location,direction,unitlist,team,seperation) ->
   return ret
 
 
-class Module
-  new: (parent) =>
-    @submodules = {}
-    @parent = parent
-
-  start: (...) =>
-    proxyCall(@submodules,"start",...)
-
-  update: (...) =>
-    proxyCall(@submodules,"update",...)
-
-  addObject: (...) =>
-    proxyCall(@submodules,"addObject",...)
-
-  createObject: (...) =>
-    proxyCall(@submodules,"createObject",...)
-
-  deleteObject: (...) =>
-    proxyCall(@submodules,"deleteObject",...)
-
-  addPlayer: (...) =>
-    proxyCall(@submodules,"addPlayer",...)
-
-  createPlayer: (...) =>
-    proxyCall(@submodules,"createPlayer",...)
-
-  deletePlayer: (...) =>
-    proxyCall(@submodules,"deletePlayer",...)
-
-  save: (...) =>
-    return proxyCall(@submodules,"save",...)
-
-  load: (...) =>
-    data = ...
-    for i, v in pairs(@submodules)
-      protectedCall(v,"load",unpack(data[i]))
-
-  gameKey: (...) =>
-    proxyCall(@submodules,"gameKey", ...)
-
-  receive: (...) =>
-    proxyCall(@submodules,"receive", ...)
-
-  command: (...) =>
-    proxyCall(@submodules,"command", ...)
-
-  useModule: (cls, ...) =>
-    inst = cls(@, ...)
-    @submodules[getFullName(cls)] = inst
-    return inst
-
-
-
-
-
 
 spawnInFormation2 = (formation, location, ...) ->
   spawnInFormation(formation, GetPosition(location, 0), GetPosition(location, 1) - GetPosition(location, 0), ...)
@@ -637,7 +582,7 @@ createClass = (name, methods, parent) ->
 
   return _class
 
-namespace("utils", Module, Timer, Area)
+namespace("utils", Timer, Area)
 
 _switchMap = (obs, func) ->
   return Observable.create((observer) ->
@@ -675,7 +620,6 @@ _switchMap = (obs, func) ->
   :createClass,
   :superCall,
   :superClass,
-  :Module,
   :instanceof,
   :isNullPos,
   :Store,

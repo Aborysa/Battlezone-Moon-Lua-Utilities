@@ -2,7 +2,9 @@
 
 utils = require("utils")
 
-import Module, proxyCall, protectedCall, getFullName, applyMeta, getMeta from utils
+Module = require("module")
+
+import proxyCall, protectedCall, getFullName, applyMeta, getMeta from utils
 
 
 
@@ -50,8 +52,8 @@ class RuntimeController extends Module
     }
     setRuntimeState(@intervals[id], 1)
     return id
-    
-  setTimeout: (func, delay) => 
+
+  setTimeout: (func, delay) =>
     @setInterval(func, delay, 1)
 
   clearInterval: (id) =>
@@ -60,17 +62,17 @@ class RuntimeController extends Module
       table.insert(@garbage,{
         t: @intervals,
         k: id
-      }) 
+      })
 
   createRoutine: (cls, ...) =>
     print("Creating routine", getFullName(cls))
     if type(cls) == "string"
       cls = @classes[cls]
-      
-    
+
+
     if cls == nil or @classes[getFullName(cls)] == nil
       error(("%s has not been registered via 'useClass'")\format(getFullName(cls)))
-    
+
     id = @nextRoutineId
     @nextRoutineId += 1
     props = {
@@ -89,7 +91,7 @@ class RuntimeController extends Module
   useClass: (cls) =>
     @classes[getFullName(cls)] = cls
 
-  getRoutine: (id) => 
+  getRoutine: (id) =>
     return @routines[id]
 
 
@@ -120,7 +122,7 @@ class RuntimeController extends Module
     for i, v in pairs(@routines)
       if getRuntimeState(v) ~= 0
         protectedCall(v, "update", dtime)
-    
+
   save: (...) =>
     routineData = {}
     for i, v in pairs(@routines)
