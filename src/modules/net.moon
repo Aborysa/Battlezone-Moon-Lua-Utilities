@@ -2,16 +2,65 @@
 rx = require("rx")
 utils = require("utils")
 
-import assignObject, Timer, namespace, Store from utils
+import assignObject, Timer, namespace, Store, sizeof, sizeTable from utils
 import Subject, AsyncSubject, ReplaySubject from rx
 
 
 
 MAX_INTERFACE = 5000
 
+MAX_SENDSIZE = IsBz15() and 200 or 2000
+
 --Notes:
 --NetworkInterface uses replay subject making it remember all network data
 --this might cause memory issues for interfaces open for longer amounts of time
+
+
+--serializes table so it can be sent regerdless of size
+
+
+
+
+simpleIdGeneratorFactory = () ->
+  _id = 0
+  return () ->
+    _id += 1
+    return _id
+
+
+netSerializeTable = (tbl, idgen=simpleIdGeneratorFactory(), keymap={}) ->
+  id = idgen()
+  keymap[id] = {}
+  size = 0
+  --if sizeof(tbl) < MAX_SENDSIZE
+    --return {table.pack(id, 1, tbl)}, keymap
+
+  children = {}
+  parts = {}
+  cpart = 0
+  for i, v in pairs(tbl)
+    if size==0
+      size = 2
+      cpart = cpart + 1
+      parts[cpart] = {}
+
+    size = size + sizeof(i) + 1
+    if type(v) == "table"
+      --size = size + sizeTable["number"](MAX_SENDSIZE)
+      _children = netSerializeTable(v, idgen, keymap)
+      _child = _children[#_children]
+      _cid = _child[1]
+      keymap[id][i] = _cid
+      for i2, v2 in ipairs(_children)
+        table.insert(children, v2)
+    else
+      size = size + sizeof(v)
+      parts[cpart][i] = v
+    if size >= MAX_SENDSIZE
+
+      size = 0
+  table.insert(children, table.pack(id, cpart, unpack(parts, 1, cpart)))
+  return children, keymap
 
 
 
@@ -22,6 +71,7 @@ _Send = Send
 
 -- only send data if there are other players in game
 export Send = (...) ->
+  print("Send",...)
   if addedPlayers > 0
     _Send(...)
 
@@ -61,7 +111,7 @@ class NetworkInterface
   getId: () =>
     @id
 
-  
+
 class NetPlayer
   new: (id, name, team) =>
     @id = id
@@ -113,17 +163,31 @@ class Socket
       p = @queue[1]
       if p
         d = #p
+
+        tsize = 0
+        sendLen = 1
         if p._head > 0
-          d = p[p._head]
-        @interface\send("P", p._head,p._id,d)
-        p._head += 1
+          for _=1, d
+            s = sizeof(p[_])
+            if s + tsize < MAX_SENDSIZE
+              tsize += s
+              sendLen += 1
+            else
+              break
+          d = table.pack(unpack(p, p._head, p._head + sendLen))
+        print("sending packet", p._head, sendLen, type(d) == "table" and #d or d)
+        if type(d) == "table"
+          @interface\send("P", p._head, p._id, unpack(d))
+        else
+          @interface\send("P", p._head, p._id, d)
+        p._head += sendLen
         if(p._head > #p)
           p._sub\onNext(p._id)
           p._sub\onCompleted()
           table.remove(@queue,1)
       elseif @closeWhenEmpty and @incomingQueueSize <= 0
         @close()
-  -- when someone else connects 
+  -- when someone else connects
   onConnect: () =>
     return @connectSubject
 
@@ -138,8 +202,15 @@ class Socket
           buffer[id] = [0 for i=1, size]
           @incomingQueueSize += 1
         elseif buffer[id] ~= nil
-          buffer[id][t] = ...
+          data = table.pack(...)
+          print("rec", #data, data.__n)
+          for _=1, #data do
+            buffer[id][t] = data[_]
+            t+=1
+            if t >= #buffer[id]
+              break
           --print("Got fragment", t, #buffer[id], t >= #buffer[id])
+          print(t, #buffer[id])
           if t >= #buffer[id]
             @receiveSubject\onNext(unpack(buffer[id],1,#buffer[id]))
             buffer[id] = nil
@@ -155,7 +226,7 @@ class Socket
 
   isOpen: () =>
     @alive
-  
+
   closeOnEmpty: () =>
     @closeWhenEmpty = true
 
@@ -206,7 +277,7 @@ class BroadcastSocket extends Socket
   new: (...) =>
     super(...)
     @onReceive()\subscribe(super\send)
-    
+
 
 
 
@@ -296,7 +367,7 @@ class NetworkInterfaceManager
     @networkInterfaces[interface_id] = nil
     table.insert(@availableIDs,id)
 
-  
+
   -- cleans up all sockets and network interfaces after a player has left
   _cleanUpInterfaces: (player) =>
 
@@ -316,7 +387,7 @@ class NetworkInterfaceManager
 
     if id == nil and #@availableIDs > 0
       id = table.remove(@availableIDs)
-    
+
     if id ~= nil
       @networkInterfaces[id] = NetworkInterface(id, to)
       @networkInterfaces[id]\getMessages()\subscribe(nil,nil,() ->
@@ -337,7 +408,7 @@ class NetworkInterfaceManager
       curr = leaf
     return leaf
 
- 
+
 
   openSocket: (to, socket_type=Socket, ...) =>
     if @network_ready
@@ -345,7 +416,7 @@ class NetworkInterfaceManager
       i = @createNewInterface(to)
       socket = socket_type(i)
       @allSockets[i\getId()] = socket
-        
+
       if leaf
         if leaf.__socket
           error("Can not have multiple sockets on one channel")
@@ -361,7 +432,7 @@ class NetworkInterfaceManager
         --error("No channels provided")
     else
       error("Network is not ready")
-  
+
   getHeadlessSocket: (to, interface_id, socket_type=Socket) =>
     s = socket_type(@_getOrCreateInterface(interface_id, to), true)
     @allSockets[interface_id] = s
@@ -377,7 +448,7 @@ class NetworkInterfaceManager
         t = Timer(2, -1)
         args = {...}
         @requestSocketsIds[requestId] = {
-          sub: leaf.__socketSubject, 
+          sub: leaf.__socketSubject,
           leaf: leaf,
           timer: t,
           subscription: t\onAlarm()\subscribe((t, life) ->
@@ -396,10 +467,11 @@ class NetworkInterfaceManager
       error("No channels provided")
 
   receive: (f, t, a, ...) =>
+    print("rec", f, t, a, ...)
     -- network interface package
     if @localPlayer and @localPlayer.id == f
       return
-      
+
     if t == "N"
       i = @_getOrCreateInterface(a, f)
       i\receive(f,...)
@@ -440,7 +512,7 @@ class NetworkInterfaceManager
       if @isHostMigrating
         @hostMigrationSubject\onNext(@hostPlayer)
         @isHostMigrating = false
-    
+
     elseif t == "Q"
       p = @getPlayer(f)
       target = ...
@@ -449,7 +521,7 @@ class NetworkInterfaceManager
         ph = @getPlayerHandle(p.team)
         if IsValid(ph)
           @playerTargets[ph] = target
-    
+
     if @hostPlayer~=nil and @machine_id~=-1 and not @network_ready
       print("Network is now ready")
       @network_ready = true
@@ -471,11 +543,11 @@ class NetworkInterfaceManager
       @network_ready = true
       @networkReadySubject\onNext()
       --@networkReadySubject\onCompleted()
-   
+
   update: (dtime) =>
     for i, v in ipairs(@requestSocketsIds)
       v.timer\update(dtime)
-    
+
     for i, v in pairs(@allSockets)
       v\sendNext()
 
@@ -508,11 +580,11 @@ class NetworkInterfaceManager
     --table.insert(@players,{:id,:name,:team})
 
   deletePlayer: (id, name, team) =>
-    
+
     addedPlayers -= 1
     for i, v in pairs(@playerInterfaceMap[id] or {}) do
       @_getOrCreateInterface(i)\close()
-    
+
     if id == (@hostPlayer or {id: -1}).id
       @isHostMigrating = true
     @players[id] = nil
@@ -552,7 +624,7 @@ class SharedStore extends Store
     )
 
     @socket\onConnect()\subscribe(
-      () -> 
+      () ->
         if not @active return
         s = @getState()
         for i, v in pairs(s)
@@ -575,5 +647,6 @@ return {
   :ServerSocket,
   :NetworkInterface,
   :NetworkInterfaceManager,
-  :SharedStore
+  :SharedStore,
+  :netSerializeTable,
 }
