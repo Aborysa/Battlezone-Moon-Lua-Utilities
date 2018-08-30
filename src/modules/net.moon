@@ -71,7 +71,6 @@ _Send = Send
 
 -- only send data if there are other players in game
 export Send = (...) ->
-  print("Send",...)
   if addedPlayers > 0
     _Send(...)
 
@@ -175,7 +174,6 @@ class Socket
             else
               break
           d = table.pack(unpack(p, p._head, p._head + sendLen))
-        print("sending packet", p._head, sendLen, type(d) == "table" and #d or d)
         if type(d) == "table"
           @interface\send("P", p._head, p._id, unpack(d))
         else
@@ -198,19 +196,16 @@ class Socket
       if tpe == "P"
         if t == 0
           size = ...
-          --print("Incoming package of size",size)
           buffer[id] = [0 for i=1, size]
           @incomingQueueSize += 1
         elseif buffer[id] ~= nil
           data = table.pack(...)
-          print("rec", #data, data.__n)
           for _=1, #data do
             buffer[id][t] = data[_]
             t+=1
-            if t >= #buffer[id]
+            if t > #buffer[id]
               break
-          --print("Got fragment", t, #buffer[id], t >= #buffer[id])
-          print(t, #buffer[id])
+
           if t >= #buffer[id]
             @receiveSubject\onNext(unpack(buffer[id],1,#buffer[id]))
             buffer[id] = nil
@@ -260,7 +255,12 @@ class ServerSocket extends Socket
           buffer[id] = [0 for i=1, size]
           @incomingQueueSize += 1
         elseif buffer[id] ~= nil
-          buffer[id][t] = ...
+          data = table.pack(...)
+          for _=1, #data do
+            buffer[id][t] = data[_]
+            t+=1
+            if t > #buffer[id]
+              break
           if t >= #buffer[id]
             @receiveSubject\onNext(@subSockets[f],unpack(buffer[id],1,#buffer[id]))
             buffer[id] = nil
@@ -467,7 +467,6 @@ class NetworkInterfaceManager
       error("No channels provided")
 
   receive: (f, t, a, ...) =>
-    print("rec", f, t, a, ...)
     -- network interface package
     if @localPlayer and @localPlayer.id == f
       return
