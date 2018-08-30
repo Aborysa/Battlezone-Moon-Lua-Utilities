@@ -5,16 +5,15 @@ net = require("net")
 component = require("component")
 bz_handle = require("bz_handle")
 runtime = require("runtime")
-
+ecs = require("ecs_module")
 Module = require("module")
 
-import Module from utils
 
 import ComponentManager from component
 import NetworkInterfaceManager from net
 import RuntimeController from runtime
 import EventDispatcherModule from event
-
+import EntityComponentSystemModule from ecs
 
 bz1Setup = () ->
   serviceManager = service.ServiceManager()
@@ -23,6 +22,7 @@ bz1Setup = () ->
   net = core\useModule(NetworkInterfaceManager, serviceManager)
   componentManager = core\useModule(ComponentManager, serviceManager)
   runtimeManager = core\useModule(RuntimeController, serviceManager)
+  ecs = core\useModule(EntityComponentSystemModule, serviceManager)
 
   serviceManager\createService("bzutils.bzapi", event)
   serviceManager\createService("bzutils.net", net)

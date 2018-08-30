@@ -103,6 +103,70 @@ export unpack = (t,...) ->
     return _unpack(t,1,t.__n)
   return _unpack(t,...)
 
+
+
+
+userdataType = (userdata) ->
+  meta = getmetatable(userdata)
+  return meta.__type
+
+sizeTable = {
+  Handle: (handle) ->
+    IsValid(handle) and 5 or 1
+  ,
+  nil: () -> 1
+  ,
+  boolean: () -> 1
+  ,
+  number: (num) ->
+    if num == 0
+      return 1
+    if num/math.ceil(num) ~= 1
+      return 9
+    if num >= -128 and num <= 127
+      return 2
+    if num >= -32768 and num <= 32767
+      return 3
+    return 5
+  ,
+  string: (string) ->
+    len = string\len()
+    if len >= 31
+      return 2 + len
+    return 1 + len
+  ,
+  table: (tbl) ->
+    count = 0
+    for i, v in pairs(tbl)
+      count = count + 1
+    if count >= 31
+      return 2 + 31
+    return 1 + 31
+  ,
+  VECTOR_3D: (vec) ->
+    return 13
+  ,
+  MAT_3D: (mat) ->
+    return 12
+  ,
+  userdata: (data) ->
+    return 13
+}
+
+sizeof = (a) ->
+  t = type(a)
+  if t == "userdata"
+    t = userdataType(a)
+  size = sizeTable[t](a)
+  if t == "table"
+    for key, value in pairs(a)
+      size = size + sizeof(key) + sizeof(value)
+
+  return size
+
+
+
+
 isIn = (element, list) ->
   for e in *list
     if e == element
@@ -123,18 +187,28 @@ compareTables = (a, b) ->
   {k, v for k, v in pairs(assignObject(a,b)) when a[k] ~= b[k]  }
 
 
-
 isNullPos = (pos) ->
   return pos.x == pos.y and pos.y == pos.z and pos.z == 0
 
-getMeta = (obj) ->
+getMeta = (obj, key) ->
+  if key
+    return {k,v for k,v in pairs( (metadata[obj] or {})[key] or {})}
   return {k,v for k,v in pairs(metadata[obj] or {})}
 
-dropMeta = (obj) ->
-  metadata[obj] = nil
+dropMeta = (obj, key) ->
+  if key and metadata[obj]
+    metadata[obj][key] = nil
+  else
+    metadata[obj] = nil
+
 
 applyMeta = (obj,...) ->
   metadata[obj] = assignObject(getMeta(obj),...)
+
+setMeta = (obj, key, value) ->
+  m = getMeta(obj)
+  m[key] = value
+  applyMeta(obj, m)
 
 namespace = (name,...) ->
   for i,v in pairs({...})
@@ -144,7 +218,8 @@ namespace = (name,...) ->
   return ...
 
 getFullName = (cls) ->
-  "#{getMeta(cls).namespace or ""}.#{cls.__name}"
+  if cls.__name
+    "#{getMeta(cls).namespace or ""}.#{cls.__name}"
 
 
 
@@ -589,7 +664,6 @@ _switchMap = (obs, func) ->
     obs\subscribe(
       (...) ->
         n = func(...)
-        print(n)
         n\subscribe( (...) ->
           observer\onNext(...)
         )
@@ -625,5 +699,9 @@ _switchMap = (obs, func) ->
   :Store,
   :getWepDps,
   :compareTables,
-  :copyList
+  :copyList,
+  :setMeta,
+  :userdataType,
+  :sizeof,
+  :sizeTable
 }
