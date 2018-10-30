@@ -100,7 +100,12 @@ table.pack = (...) ->
 
 export unpack = (t,...) ->
   if(t.__n ~= nil)
-    return _unpack(t,1,t.__n)
+    numArgs = select('#', ...)
+    if numArgs == 0
+      return _unpack(t,1,t.__n)
+    elseif numArgs == 1
+      return _unpack(t,{...}[1],t.__n)
+  
   return _unpack(t,...)
 
 
