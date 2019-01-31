@@ -5,6 +5,9 @@ import Subject, ReplaySubject, AsyncSubject from Rx
 --Consts
 metadata = setmetatable({},{__mode: "k"})
 
+--namespace data
+namespaceData = setmetatable({}, {__mode: "v"})
+
 --Util functions
 _unpack = unpack
 _GetOdf = GetOdf
@@ -98,17 +101,28 @@ table.pack = (...) ->
   l = select("#", ...)
   setmetatable({ __n: l, ... }, {__len: () -> l})
 
+table.reverse = (tbl) ->
+  ret = {}
+  for i = #tbl, 1, -1
+    table.insert(ret, tbl[i])
+  return ret
+
+
 export unpack = (t,...) ->
   if(t.__n ~= nil)
     numArgs = select('#', ...)
     if numArgs == 0
       return _unpack(t,1,t.__n)
     elseif numArgs == 1
-      return _unpack(t,{...}[1],t.__n)
+      return _unpack(t,({...})[1],t.__n)
   
   return _unpack(t,...)
 
-
+simpleIdGeneratorFactory = () ->
+  _id = 0
+  return () ->
+    _id += 1
+    return _id
 
 
 userdataType = (userdata) ->
@@ -215,18 +229,24 @@ setMeta = (obj, key, value) ->
   m[key] = value
   applyMeta(obj, m)
 
-namespace = (name,...) ->
-  for i,v in pairs({...})
-    applyMeta(v,{
-      namespace: name
-    })
-  return ...
-
 getFullName = (cls) ->
   if cls.__name
     "#{getMeta(cls).namespace or ""}.#{cls.__name}"
 
 
+namespace = (name,...) ->
+  for i,v in pairs({...})
+    applyMeta(v,{
+      namespace: name
+    })
+    name = getFullName(v)
+    if name
+      namespaceData[name] = v
+  return ...
+
+
+getClass = (name) ->
+  return namespaceData[name]
 
 instanceof = (inst,cls) ->
   current = cls
@@ -243,29 +263,6 @@ protectedCall = (obj,method,...) ->
 
 proxyCall = (objs,method,...) ->
   return {i,table.pack(protectedCall(v,method,...)) for i, v in pairs(objs)}
-
-local2Global = (v,t) ->
-  up = SetVector(t.up_x, t.up_y, t.up_z)
-  front = SetVector(t.front_x, t.front_y, t.front_z)
-  right = SetVector(t.right_x, t.right_y, t.right_z)
-  return v.x * front + v.y * up + v.z * right
-
-safeDiv = (a,b) ->
-  if a == 0
-    return 0
-  if b == 0
-    return math.hugh
-  return a/b
-
-safeDivV = (v1,v2) ->
-  return SetVector(safeDiv(v1.x,v2.x), safeDiv(v1.y,v2.y), safeDiv(v1.z, v2.z))
-
-global2Local = (v,t) ->
-  up = SetVector(t.up_x, t.up_y, t.up_z)
-  front = SetVector(t.front_x, t.front_y, t.front_z)
-  right = SetVector(t.right_x, t.right_y, t.right_z)
-
-  return SetVector(DotProduct(v, front), DotProduct(v, up), DotProduct(v, right))
 
 
 
@@ -332,126 +329,7 @@ class Store
     @keyUpdateSubject
 
 --loop = -1, loop infinite times
-class Timer
-  new: (time,loop=0) =>
-    @inf = loop == -1
-    @life = loop + 1
-    @time = time
-    @acc = 0
-    @tleft = time
-    @running = false
-    @alarmSubject = Subject.create()
 
-  _round: () =>
-    @reset()
-    @life -= 1
-    if(@life <= 0 and (not @inf))
-      @running = false
-
-    @alarmSubject\onNext(@,math.abs(@life),@acc)
-
-  update: (dtime) =>
-    if(@running)
-      @acc += dtime
-      @tleft -= dtime
-      if(@tleft <= 0)
-        @_round()
-
-  start: () =>
-    if(@life > 0 or @inf)
-      @running = true
-
-  setLife: (life) =>
-    @life = life
-
-  reset: () =>
-    @tleft = @time
-
-  stop: () =>
-    @pause()
-    @reset()
-
-  pause: () =>
-    @running = false
-
-  onAlarm: () =>
-    return @alarmSubject
-
-  save: () =>
-    return @tleft, @acc, @running, @life
-
-  load: (...) =>
-    @tleft, @acc, @running, @life = ...
-
-class Area
-  new: (path,t="poly") =>
-    @areaSubjects = {
-      all: Subject.create()
-    }
-    @type = t
-    @path = path
-    @handles = {}
-        --Calculate center and radius
-    @_bounding()
-    --register everyone that is inside
-    for v in ObjectsInRange(@radius+50,@center)
-      if IsInsideArea(@path,v)
-        @handles[v] = true
-
-
-  getPath: () =>
-    @path
-
-  getCenter: () =>
-    @center
-
-  getObjects: () =>
-    return [i for i,v in pairs(@handles)]
-
-  getRadius: () =>
-    @radius
-
-  _bounding: () =>
-    if(@type == "poly")
-      center = GetCenterOfPath(@path)
-      radius = 0
-      for i,v in ipairs(GetPathPoints(@path)) do
-        radius = math.max(radius,Length(v-center))
-
-      @center = center
-      @radius = radius
-
-  update: () =>
-    all = {i,1 for i,v in pairs(@handles)}
-    for v in ObjectsInRange(@radius+50,@center)
-      all[v] = 1
-    for v,_ in pairs(all) do
-      if IsInsideArea(@path,v)
-        if @handles[v] == nil
-          @nextObject(v,true)
-        @handles[v] = true
-      else
-        if @handles[v]
-          @nextObject(v,false)
-        @handles[v] = nil
-
-  nextObject: (handle,inside) =>
-    @areaSubjects.all\onNext(@,handle,inside)
-    if(@areaSubjects[handle])
-      @areaSubjects[handle]\onNext(@,handle,inside)
-
-  onChange: (handle) =>
-    if(handle)
-      @areaSubjects[handle] = @areaSubjects[handle] or Subject.create()
-      return @areaSubjects[handle]
-
-    return @areaSubjects.all
-
-  save: () =>
-    return @handles
-
-  load: (...) =>
-    @handles = ...
 
 class OdfHeader
   new: (file,name) =>
@@ -524,6 +402,92 @@ class OdfFile
 
   getTableOf: (parser, header, ...) =>
     @getHeader(header)\getTableOf(parser, ...)
+
+
+-- generates a build tree of all the possible things to produce
+
+class BuildObject
+  new: (odf) =>
+    file = OdfFile(odf)
+    @cost = file\getInt("GameObjectClass", "scrapCost")
+    @classLabel = file\getInt("GameObjectClass", "classLabel")
+    @odf = odf
+    @health = file\getInt("GameObjectClass", "maxHealth")
+    @ammo = file\getInt("GameObjectClass", "maxAmmo")
+
+  getClassLabel: () =>
+    @classLabel
+
+  getCost: () =>
+    @cost
+
+  getOdf: () =>
+    @odf
+
+  getAmmo: () =>
+    @ammo
+
+  getHealth: () =>
+    @health
+  
+
+class BuildTree
+  new: (odf) =>
+    
+    @allOdfs = {}
+    @odfByClass = {}
+    @subtrees = {}
+
+    @_buildRecursiveTree(OdfFile(odf))
+
+  _addOdf: (odf) =>
+    boject = BuildObject(odf)
+    @allOdfs[odf] = bobject
+    classLabel = boject\getClassLabel()
+    if not @odfByClass[classLabel]
+      @odfByClass[classLabel] = {}
+
+    table.insert(@odfByClass[classLabel], bobject)
+
+  _buildTree: (file) =>
+    list = {default: {}}
+    isEmpty = true
+    for i=1, 20
+      list.default[i] = file\getString("ProducerClass", ("buildItem%d")\format(i))
+      isEmpty = isEmpty and list.default[i] == nil
+      if list.default[i] ~= nil
+        @_addOdf(list.default[i])
+
+    if file\getString("GameObjectClass", "classLabel") == "armory"
+      extraList = {"cannon", "rocket", "mortar", "special"}
+      for _, l in ipairs(extraList)
+        list[l] = {}
+        for i=1, 20
+          list[l][i] = file\getString("ArmoryClass", ("%sItem%d")\format(l, i))
+          isEmpty = isEmpty and list[l][i]==nil
+
+    return list, isEmpty
+  
+  _buildRecursiveTree: (file) =>
+    ret = {}
+    bTree, empty = @_buildTree(file)
+    if not empty
+      for i, v in pairs(bTree.default) do
+        @subtrees[v] = BuildTree(v)
+
+    return ret, empty
+
+  -- returns all the 
+  getOdfs: (classname) =>
+    return @odfByClass[classname] or {}
+  
+  getOdfsRecursive: (classname) =>
+    odfs = @getOdfs(classname)
+    for i, v in pairs(@subtrees)
+      for _, odf in pairs(v\getOdfsRecursive(classname))
+        table.insert(odfs, odf)
+
+    return odfs
 
 
 --Other functions
@@ -641,7 +605,6 @@ createClass = (name, methods, parent) ->
 
   _class = setmetatable(_class, {
     __index: (name) =>
-      print("Indexing",name)
       val = rawget(_base, name)
       if val == nil then
         _parent = rawget(@, "__parent")
@@ -681,19 +644,17 @@ _switchMap = (obs, func) ->
   :protectedCall,
   :str2vec,
   :stringlist,
-  :global2Local,
-  :local2Global,
   :getHash,
   :assignObject,
   :isIn,
   :getMeta,
   :applyMeta,
-  :Timer,
   :Area,
   :OdfFile,
   :spawnInFormation,
   :spawnInFormation2,
   :namespace,
+  :getClass,
   :getFullName,
   :dropMeta,
   :createClass,
@@ -708,5 +669,8 @@ _switchMap = (obs, func) ->
   :setMeta,
   :userdataType,
   :sizeof,
-  :sizeTable
+  :sizeTable,
+  :simpleIdGeneratorFactory,
+  :BuildObject,
+  :BuildTree
 }

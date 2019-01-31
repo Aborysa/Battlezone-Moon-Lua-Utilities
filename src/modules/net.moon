@@ -1,10 +1,12 @@
 
 rx = require("rx")
 utils = require("utils")
+runtime = require("runtime")
 
-import assignObject, Timer, namespace, Store, sizeof, sizeTable from utils
+
+import assignObject, namespace, Store, sizeof, sizeTable, simpleIdGeneratorFactory from utils
 import Subject, AsyncSubject, ReplaySubject from rx
-
+import Timer from runtime
 
 
 MAX_INTERFACE = 5000
@@ -18,14 +20,6 @@ MAX_SENDSIZE = IsBz15() and 200 or 2000
 
 --serializes table so it can be sent regerdless of size
 
-
-
-
-simpleIdGeneratorFactory = () ->
-  _id = 0
-  return () ->
-    _id += 1
-    return _id
 
 
 netSerializeTable = (tbl, idgen=simpleIdGeneratorFactory(), keymap={}) ->
@@ -283,7 +277,8 @@ class BroadcastSocket extends Socket
 
 
 class NetworkInterfaceManager
-  new: () =>
+  new: (serviceManager) =>
+    @serviceManager = serviceManager
     @networkInterfaces = {}
     -- our machines id
     @machine_id = -1
@@ -445,7 +440,7 @@ class NetworkInterfaceManager
         @nextRequestId += 1
         requestId = @nextRequestId
         leaf.__socketSubject = AsyncSubject.create()
-        t = Timer(2, -1)
+        t = Timer(2, -1, @serviceManager)
         args = {...}
         @requestSocketsIds[requestId] = {
           sub: leaf.__socketSubject,
@@ -489,7 +484,7 @@ class NetworkInterfaceManager
         interface_id = ...
         r = @requestSocketsIds[a]
         r.subscription\unsubscribe()
-        r.timer = nil
+        r.timer\stop()
         s = Socket(@_getOrCreateInterface(interface_id, f), true)
         s\onReceive()\subscribe(nil,nil,() ->
           r.leaf.__socketSubject = nil

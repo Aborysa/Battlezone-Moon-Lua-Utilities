@@ -28,6 +28,8 @@ bz1Setup = () ->
   serviceManager\createService("bzutils.net", net)
   serviceManager\createService("bzutils.component", componentManager)
   serviceManager\createService("bzutils.runtime", runtimeManager)
+  serviceManager\createService("bzutils.ecs", ecs)
+
 
   return {
     :core,
@@ -57,5 +59,6 @@ return {
   :runtime,
   :event,
   :service,
-  :net
+  :net,
+  :ecs
 }

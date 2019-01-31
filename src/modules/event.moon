@@ -48,6 +48,10 @@ class EventDispatcherModule extends Module
   getDispatcher: () =>
     @dispatcher
 
+  start: () =>
+    super\start()
+    @dispatcher\dispatch(Event("START",nil,nil))
+
   addObject: (...) =>
     super\addObject(...)
     @dispatcher\dispatch(Event("ADD_OBJECT",nil,nil,...))
@@ -82,5 +86,6 @@ class EventDispatcherModule extends Module
 
 {
   :EventDispatcherModule,
-  :EventDispatcher
+  :EventDispatcher,
+  :Event
 }

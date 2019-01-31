@@ -153,7 +153,70 @@ class RuntimeController extends Module
       @routines[rid] = inst
 
 
+class Timer
+  new: (time, loop=0, serviceManager) =>
+    @life = loop + 1
+    @time = time
+    @acc = 0
+    @tleft = time
+    @running = false
+    @alarmSubject = Subject.create()
+    @r_id = -1
+    serviceManager\getService("bzutils.runtime")\subscribe((runtimeController) -> 
+      @runtimeController = runtimeController
+    )
+
+  _round: () =>
+    @reset()
+    @life -= 1
+    if(@life <= 0)
+      @running = false
+
+    @alarmSubject\onNext(@,math.abs(@life),@acc)
+
+  update: (dtime) =>
+    if(@running)
+      @acc += dtime
+      @tleft -= dtime
+      if(@tleft <= 0)
+        @_round()
+
+  start: () =>
+    if @r_id < 0
+      if(@life > 0)
+        @running = true
+        @r_id = @runtimeController\setInterval(@\update, @time/4)
+
+  setLife: (life) =>
+    @life = life
+
+  reset: () =>
+    @tleft = @time
+
+  stop: () =>
+    if @running
+      @runtimeController\clearInterval(@r_id)
+      @r_id = -1
+    @pause()
+    @reset()
+
+  pause: () =>
+    @running = false
+
+  onAlarm: () =>
+    return @alarmSubject
+
+  save: () =>
+    return @tleft, @acc, @running, @life, @r_id
+
+  load: (...) =>
+    @tleft, @acc, @running, @life = ...
+    if @running
+      @start()
+
+
 return {
   :RuntimeController,
-  :getRuntimeState
+  :getRuntimeState,
+  :Timer
 }

@@ -2,16 +2,22 @@ utils = require("utils")
 rx = require("rx")
 tiny = require("tiny")
 
+event = require("event")
+
+bzserializers = require("bzserial")
+
 import Subject from rx
+
 
 import namespace, getFullName, setMeta, getMeta from utils
 
-
+import Event, EventDispatcher from event
+import serializeEntity, deserializeEntity from bzserializers
 
 convertArgsToNames = (...) ->
   t = {...}
   for i=1, #t
-    t[i] = (type(t[i]) == "string" or typeof(t[i]) == "function") and t[i] or getFullName(t[i])
+    t[i] = (type(t[i]) == "string" or type(t[i]) == "function") and t[i] or getFullName(t[i])
 
   return unpack(t)
 
@@ -28,10 +34,22 @@ rejectAny = (...) ->
     return tiny.rejectAll(convertArgsToNames(...))
 
 
+_component_odfs = setmetatable({},{__mode: "k"})
 
+loadFromFile = (component, header, fields={}) ->
+  -- should component data be loaded from an odf file
+  setMeta(component, "ecs.fromfile", {
+    :header,
+    :fields
+  })
+  _component_odfs[component] = true
+
+getComponentOdfs = () ->
+  return _component_odfs
 
 class Component
-  @entities = {}
+  @entities: {}
+  @dispatcher: EventDispatcher()
   @addEntity: (entity) =>
     id = getMeta(entity, "ecs").id
     if id
@@ -40,9 +58,11 @@ class Component
     if not entity[cm]
       entity[cm] = @()
 
+    @dispatcher\dispatch(Event("ECS_COMPONENT_ADDED", @, nil, entity))
     return entity[cm]
 
   @removeEntity: (entity) =>
+    @dispatcher\dispatch(Event("ECS_COMPONENT_REMOVED", @, nil, entity))
     entity[@getName()] = nil
 
   @getComponent: (entity) =>
@@ -54,16 +74,21 @@ class Component
   @getEntities: () =>
     return @entities
 
+  @getDispatcher: () =>
+    return @dispatcher
+
 
 
 
 class EcsWorld
   new: (...) =>
     @world = tiny.world(...)
+    @world.bzworld = @
     @entities = {}
     @nextId = 1
-    @TPS = 60
+    @TPS = 120
     @acc = 0
+    @dispatcher = EventDispatcher()
 
   update: (dtime) =>
     @acc += dtime
@@ -73,8 +98,13 @@ class EcsWorld
 
     tiny.refresh(@world)
 
-  createEntity: (...) =>
-    eid = @nextId
+  
+
+  createEntity: (eid) =>
+    if not eid
+      eid = @nextId
+      @nextId+=1
+    
     entity = {}
     setMeta(entity, "ecs", {
       id: eid
@@ -83,21 +113,29 @@ class EcsWorld
     tiny.addEntity(@world, entity)
 
     @entities[eid] = entity
-    @nextId+=1
+    @dispatcher\dispatch(Event("ECS_CREATE_ENTITY",@,nil,entity))
     return eid, entity
 
   removeEntity: (eid) =>
     if(@entities[eid])
-      print("remove",eid)
       tiny.removeEntity(@world, @entities[eid])
+      @dispatcher\dispatch(Event("ECS_REMOVE_ENTITY",@,nil,@entities[eid]))
       @entities[eid] = nil
 
-  addSystem: (...) =>
-    tiny.addSystem(@world, ...)
+  removeTinyEntity: (entity) =>
+    id = @getEntityId(entity)
+    @removeEntity(id)
 
+  addSystem: (system) =>
+    tiny.addSystem(@world, system)
+    system.bzworld = @
+    @dispatcher\dispatch(Event("ECS_ADD_SYSTEM",@,nil, system))
+      
   getTinyWorld: () =>
     return @world
 
+  getDispatcher: () =>
+    @dispatcher
   --internal
   remove: (...) =>
     tiny.remove(@world, ...)
@@ -105,17 +143,33 @@ class EcsWorld
   getTinyEntity: (eid) =>
      return @entities[eid]
 
+  getEntityId: (entity) =>
+    return getMeta(entity, "ecs").id
+
   getEntities: () =>
     return @entities
 
   refresh: () =>
     tiny.refresh(@world)
 
-  removeSystem: (...) =>
-    tiny.removeSystem(@world, ...)
+  removeSystem: (system) =>
+    tiny.removeSystem(@world, system)
+    system.bzworld = nil
+    @dispatcher\dispatch(Event("ECS_ADD_SYSTEM",@,nil, system))
 
   clearSystems: (...) =>
+    for i = #@world.systems, 1, -1
+      @removeSystem(@world.systems[i])
     tiny.clearSystems(@world, ...)
+    @dispatcher\dispatch(Event("ECS_CLEAR_SYSTEMS",@,nil,...))
+
+  clearEntities: (...) =>
+    for i, v in ipairs(@world.entities)
+      @removeTinyEntity(v)
+
+    tiny.clearEntities(@world, ...)
+    @dispatcher\dispatch(Event("ECS_CLEAR_ENTITIES",@,nil,...))
+
 
   getEntityCount: (...) =>
     tiny.getEntityCount(@world, ...)
@@ -126,6 +180,24 @@ class EcsWorld
   setSystemIndex: (...) =>
     tiny.setSystemIndex(@world, ...)
 
+  save: () =>
+    data = {
+      entities: {},
+      _entity_count: @getEntityCount(),
+      _next_id: @nextId
+    }
+    entities = @getEntities()
+    for id, entity in pairs(entities)
+      data.entities[id] = serializeEntity(entity)
+
+    return data
+
+  load: (data) =>
+    @nextId = data._next_id
+    for id, entityData in pairs(data.entities)
+      eid, entity = @createEntity(id)
+      deserializeEntity(entityData, entity)
+
 namespace("ecs", EcsWorld, Component)
 
 return {
@@ -134,5 +206,7 @@ return {
   :requireAny,
   :rejectAll,
   :rejectAny,
-  :Component
+  :Component,
+  :loadFromFile,
+  :getComponentOdfs
 }
