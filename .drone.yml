@@ -53,8 +53,8 @@ pipeline:
       event:
         - tag
     script:
-      - \cp -f /tmp/bzmoon.zip /mnt/nginx-fs/files/public/bzmoon/bzmoon_${DRONE_TAG}.zip || true
-      - \cp -f /tmp/bzmoon.zip /mnt/nginx-fs/files/public/bzmoon/bzmoon_latest.zip || true
+      - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_${DRONE_TAG}.zip || true
+      - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_latest.zip || true
 
     volumes:
       - /root/.ssh/id_rsa:/ssh/id_rsa
