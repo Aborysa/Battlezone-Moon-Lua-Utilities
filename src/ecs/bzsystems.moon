@@ -1,6 +1,6 @@
 bztiny = require("bztiny")
 
-bzcomponents = require("bzcomponents")
+bzcomponents = require("bzcomp")
 
 import BzPlayerComponent, BzHandleComponent from bzcomponents
 
