@@ -3,6 +3,7 @@ _ = require("component")
 _ = require("net")
 _ = require("runtime")
 _ = require("ecs_module")
+_ = require("objective_m")
 
 -- ecs
 _ = require("bzcomp")
@@ -22,6 +23,7 @@ _ = require("msetup")
 _ = require("service")
 _ = require("terrain")
 _ = require("utils")
+_ = require("objective")
 
 
 -- bzutils
