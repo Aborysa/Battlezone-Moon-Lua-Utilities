@@ -34,7 +34,7 @@ rejectAny = (...) ->
     return tiny.rejectAll(convertArgsToNames(...))
 
 
-_component_odfs = setmetatable({},{__mode: "k"})
+_component_odfs = setmetatable({},{})
 
 loadFromFile = (component, header, fields={}) ->
   -- should component data be loaded from an odf file
@@ -98,8 +98,6 @@ class EcsWorld
 
     tiny.refresh(@world)
 
-  
-
   createEntity: (eid) =>
     if not eid
       eid = @nextId
@@ -115,6 +113,14 @@ class EcsWorld
     @entities[eid] = entity
     @dispatcher\dispatch(Event("ECS_CREATE_ENTITY",@,nil,entity))
     return eid, entity
+
+  updateTinyEntity: (entity) =>
+    tiny.addEntity(@world, entity)
+
+  updateEntity: (eid) =>
+    -- update entity after it has changed
+    @updateTinyEntity(@getTinyEntity(eid))
+
 
   removeEntity: (eid) =>
     if(@entities[eid])
