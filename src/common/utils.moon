@@ -118,8 +118,7 @@ export unpack = (t,...) ->
   
   return _unpack(t,...)
 
-simpleIdGeneratorFactory = () ->
-  _id = 0
+simpleIdGeneratorFactory = (_id=0) ->
   return () ->
     _id += 1
     return _id
@@ -239,9 +238,9 @@ namespace = (name,...) ->
     applyMeta(v,{
       namespace: name
     })
-    name = getFullName(v)
+    _name = getFullName(v)
     if name
-      namespaceData[name] = v
+      namespaceData[_name] = v
   return ...
 
 
@@ -272,7 +271,8 @@ stringlist = (str) ->
 
 str2vec = (str) ->
   m = str\gmatch("%s*(%-?%d*%.?%d*)%a*%s*,?")
-  return SetVector(m(), m(), m())
+  x, y, z = m(), m(), m()
+  return SetVector(tonumber(x), tonumber(y), tonumber(z))
 
 getHash = (any) ->
   tonumber {tostring(any)\gsub("%a+: ","")}, 16
@@ -369,6 +369,29 @@ class OdfHeader
     t = @getTable(var, ...)
     return [parser(v) for i, v in ipairs(t)]
 
+  getFields: (fields, tbl) =>
+    for field, t in pairs(fields)
+      v = nil
+      if t == "bool"
+        v = @getBool(field, false)
+      elseif t == "string"
+        v = @getProperty(field)
+      elseif t == "float"
+        v = @getFloat(field, 0)
+      elseif t == "int"
+        v = @getInt(field, 0)
+      elseif t == "vector"
+        v = @getVector(field)
+      elseif t == "table"
+        v = @getTable(field)
+      elseif type(t) == "function"
+        v = @getValueAs(t, field)
+      else
+        v = @getProperty(field)
+      
+      tbl[field] = v
+    return tbl
+
 class OdfFile
   new: (filename) =>
     @name = filename
@@ -403,6 +426,8 @@ class OdfFile
   getTableOf: (parser, header, ...) =>
     @getHeader(header)\getTableOf(parser, ...)
 
+  getFields: (header, fields, tbl={}) =>
+    @getHeader(header)\getFields(fields, tbl)
 
 -- generates a build tree of all the possible things to produce
 

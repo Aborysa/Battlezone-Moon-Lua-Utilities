@@ -22,3 +22,6 @@ class Terrain
 
 
 
+return {
+  :Terrain
+}
