@@ -23,6 +23,9 @@ _ = require("msetup")
 _ = require("service")
 _ = require("terrain")
 _ = require("utils")
+_ = require("lvdf")
+
+-- objective
 _ = require("objective")
 
 

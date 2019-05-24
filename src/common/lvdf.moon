@@ -1,8 +1,8 @@
-local json = require("json")
+json = require("json")
 
 
 
-local default_file = "bundle.pvdf"
+default_file = "bundle.pvdf"
 
 
 
@@ -58,7 +58,7 @@ loadBundle = (file=default_file) ->
 
 
   bundle = {}
-  vdfs = json(UseItem(file))
+  vdfs = json.decode(UseItem(file))
   for vdfName, struct in pairs(vdfs)
     vdf = VehicleDefinition(vdfName)
     for shortname, p in pairs(struct)
@@ -70,7 +70,7 @@ loadBundle = (file=default_file) ->
       parent = vdf\getPart(part\getParent())
       part\setParent(parent)
     
-    bundleCache[vdfName] = vdf
+    bundle[vdfName] = vdf
   bundleCache[file] = bundle
   return bundle
 
