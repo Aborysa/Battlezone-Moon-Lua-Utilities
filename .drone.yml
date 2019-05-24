@@ -5,6 +5,7 @@ workspace:
 pipeline:
   bundler:
     image: docker.faavne.no/bzone/bztools:latest
+    pull: never
     when:
       event:
         - tag
