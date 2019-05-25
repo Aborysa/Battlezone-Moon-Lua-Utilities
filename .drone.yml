@@ -14,15 +14,17 @@ pipeline:
       - moonc /bzmoon/repo/src
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
       - curl -O https://raw.githubusercontent.com/bakpakin/tiny-ecs/master/tiny.lua
+      - curl -O https://raw.githubusercontent.com/rxi/json.lua/master/json.lua
       - mv rx.lua /tmp/bzmoon
       - mv tiny.lua /tmp/bzmoon
+      - mv json.lua /tmp/bzmoon
       - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
       - cp /bzmoon/repo/.squish /tmp/bzmoon
       - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
       - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
       - mv /tmp/bzmoon2/* /tmp/bzmoon
       - cp /bzmoon/repo/extra/* /tmp/bzmoon
-      - zip -j -r /bzmoon/bzmoon.zip /tmp/bzmoon -i '*.lua'
+      - zip -j -r /bzmoon/bzmoon.zip /tmp/bzmoon
 
   upload:
     image: appleboy/drone-scp
