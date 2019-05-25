@@ -1,11 +1,12 @@
 
 
 utils = require("utils")
-
+rx = require("rx")
 Module = require("module")
 
 import proxyCall, protectedCall, getFullName, applyMeta, getMeta from utils
 
+import Subject from rx
 
 
 -- Routine life cycle:
@@ -47,7 +48,7 @@ class RuntimeController extends Module
     @intervals[id] = {
       func: func,
       delay: delay,
-      count: -1,
+      count: count,
       time: 0
     }
     setRuntimeState(@intervals[id], 1)

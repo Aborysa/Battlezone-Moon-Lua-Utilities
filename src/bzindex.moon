@@ -1,3 +1,8 @@
+-- dependencies
+_ = require("rx")
+_ = require("tiny")
+
+
 -- modules
 _ = require("component")
 _ = require("net")

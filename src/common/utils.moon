@@ -230,8 +230,7 @@ setMeta = (obj, key, value) ->
 
 getFullName = (cls) ->
   if cls.__name
-    "#{getMeta(cls).namespace or ""}.#{cls.__name}"
-
+    return "#{getMeta(cls).namespace or ""}.#{cls.__name}"
 
 namespace = (name,...) ->
   for i,v in pairs({...})
@@ -431,7 +430,7 @@ class OdfFile
 
 -- generates a build tree of all the possible things to produce
 
-class BuildObject
+class CBuildObject
   new: (odf) =>
     file = OdfFile(odf)
     @cost = file\getInt("GameObjectClass", "scrapCost")
@@ -466,7 +465,7 @@ class BuildTree
     @_buildRecursiveTree(OdfFile(odf))
 
   _addOdf: (odf) =>
-    boject = BuildObject(odf)
+    boject = CBuildObject(odf)
     @allOdfs[odf] = bobject
     classLabel = boject\getClassLabel()
     if not @odfByClass[classLabel]
@@ -696,6 +695,6 @@ _switchMap = (obs, func) ->
   :sizeof,
   :sizeTable,
   :simpleIdGeneratorFactory,
-  :BuildObject,
+  :CBuildObject,
   :BuildTree
 }
