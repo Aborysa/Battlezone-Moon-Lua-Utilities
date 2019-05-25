@@ -115,8 +115,8 @@ class RuntimeController extends Module
     for i, v in pairs(@intervals)
       v.time = v.time + dtime
       if v.time >= v.delay
+        v.func(v.time)
         v.time -= v.delay
-        v.func()
         v.count -= 1
         if v.count == 0
           @clearInterval(i)
