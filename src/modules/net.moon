@@ -325,10 +325,10 @@ class NetworkInterfaceManager
     return totalTx
 
   getTotalRx: () =>
-    return totalRx
+    return @totalRx
 
   getRxRate: () =>
-    return rxRate
+    return @rxRate
 
   getTxRate: () =>
     return txRate
