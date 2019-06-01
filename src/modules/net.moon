@@ -278,7 +278,6 @@ class BroadcastSocket extends Socket
 
 class NetworkInterfaceManager
   new: (parent, serviceManager) =>
-    super(parent, serviceManager)
     @serviceManager = serviceManager
     @networkInterfaces = {}
     -- our machines id
