@@ -60,6 +60,9 @@ netSerializeTable = (tbl, idgen=simpleIdGeneratorFactory(), keymap={}) ->
 
 addedPlayers = 0
 
+txRate = 0
+totalTx = 0
+
 _Send = Send
 
 
@@ -67,6 +70,9 @@ _Send = Send
 export Send = (...) ->
   if addedPlayers > 0
     _Send(...)
+    totalTx += 1
+    txRate += 1
+
 
 
 
@@ -312,6 +318,21 @@ class NetworkInterfaceManager
     @phandle = GetPlayerHandle()
     @ptarget = GetUserTarget()
 
+    @totalRx = 0
+    @rxRate = 0
+
+  getTotalTx: () =>
+    return totalTx
+
+  getTotalRx: () =>
+    return totalRx
+
+  getRxRate: () =>
+    return rxRate
+
+  getTxRate: () =>
+    return txRate
+
   getLocalPlayer: () =>
     if not @isNetworkReady
       error("Unknown! Network is not ready")
@@ -466,6 +487,9 @@ class NetworkInterfaceManager
     if @localPlayer and @localPlayer.id == f
       return
 
+    @totalRx += 1
+    @rxRate += 1
+
     if t == "N"
       i = @_getOrCreateInterface(a, f)
       i\receive(f,...)
@@ -539,6 +563,14 @@ class NetworkInterfaceManager
       --@networkReadySubject\onCompleted()
 
   update: (dtime) =>
+
+    @rxRate -= dtime
+    txRate -= dtime
+
+    @rxRate = math.max(@rxRate, 0)
+    txRate = math.max(txRate, 0)
+    
+
     for i, v in ipairs(@requestSocketsIds)
       v.timer\update(dtime)
 
