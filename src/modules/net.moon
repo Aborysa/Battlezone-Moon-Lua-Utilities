@@ -461,7 +461,7 @@ class NetworkInterfaceManager
         @nextRequestId += 1
         requestId = @nextRequestId
         leaf.__socketSubject = AsyncSubject.create()
-        t = Timer(2, -1, @serviceManager)
+        t = Timer(2, math.huge, @serviceManager)
         args = {...}
         @requestSocketsIds[requestId] = {
           sub: leaf.__socketSubject,
