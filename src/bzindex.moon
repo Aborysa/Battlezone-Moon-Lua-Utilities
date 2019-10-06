@@ -1,7 +1,8 @@
 -- dependencies
 _ = require("rx")
 _ = require("tiny")
-
+_ = require("json")
+_ = require("base64")
 
 -- modules
 _ = require("component")
@@ -33,6 +34,10 @@ _ = require("lvdf")
 -- objective
 _ = require("objective")
 
+-- bzext
+_ = require("dloader")
+_ = require("bzext_m")
 
 -- bzutils
 _ = require("bzutils")
+

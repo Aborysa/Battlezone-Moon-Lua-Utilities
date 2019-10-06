@@ -17,7 +17,7 @@ import EntityComponentSystemModule from ecs
 
 import ObjectiveModule from objective_m
 
-bz1Setup = () ->
+bz1Setup = (use_bzext=false) ->
   serviceManager = service.ServiceManager()
   core = Module()
   event = core\useModule(EventDispatcherModule, serviceManager)
@@ -34,6 +34,15 @@ bz1Setup = () ->
   serviceManager\createService("bzutils.ecs", ecs)
   serviceManager\createService("bzutils.objective", objectiveManager)
 
+  if use_bzext
+    bzext_m = require("bzext_m")
+
+    bzext_m.initBzExt()
+    bzextModule = core\useModule(bzext_m.BzExtModule, serviceManager)
+    serviceManager\createService("bzutils.bzext", bzextModule)
+
+
+
   return {
     :core,
     :serviceManager
@@ -41,11 +50,11 @@ bz1Setup = () ->
 
 bz2Setup = () ->
 
-defaultSetup = () ->
+defaultSetup = (use_bzext=false) ->
   if IsBzr() or IsBz15()
-    return bz1Setup()
+    return bz1Setup(use_bzext)
   elseif IsBz2
-    return bz2Setup()
+    return bz2Setup(use_bzext)
 
 
 

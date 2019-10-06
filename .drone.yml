@@ -15,9 +15,11 @@ pipeline:
       - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
       - curl -O https://raw.githubusercontent.com/bakpakin/tiny-ecs/master/tiny.lua
       - curl -O https://raw.githubusercontent.com/rxi/json.lua/master/json.lua
+      - curl -O https://raw.githubusercontent.com/Tieske/uuid/master/src/uuid.lua
       - mv rx.lua /tmp/bzmoon
       - mv tiny.lua /tmp/bzmoon
       - mv json.lua /tmp/bzmoon
+      - mv uuid.lua /tmp/bzmoon
       - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
       - cp /bzmoon/repo/.squish /tmp/bzmoon
       - cp -r /tmp/bzmoon/. /tmp/bzmoon2/

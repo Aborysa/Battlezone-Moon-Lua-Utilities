@@ -27,6 +27,7 @@ class Event
 class EventDispatcher
   new: () =>
     @subjects = {}
+    @eventQueue = {}
 
   on: (event) =>
     if(not @subjects[event])
@@ -36,7 +37,15 @@ class EventDispatcher
   dispatch: (event) =>
     if(@subjects[event.name])
       @subjects[event.name]\onNext(event)
+  
+  queueEvent: (event) =>
+    table.insert(@eventQueue, event)
+  
+  dispatchQueue: () =>
+    for i, event in ipairs(@eventQueue)
+      @dispatch(event)
 
+    @eventQueue = {}
 
 
 

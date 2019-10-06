@@ -4,4 +4,3 @@ cpl
 dist
 .vscode
 *.log
-*.lua
