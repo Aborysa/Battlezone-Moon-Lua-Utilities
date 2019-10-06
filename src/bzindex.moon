@@ -30,6 +30,7 @@ _ = require("service")
 _ = require("terrain")
 _ = require("utils")
 _ = require("lvdf")
+_ = require("os")
 
 -- objective
 _ = require("objective")
