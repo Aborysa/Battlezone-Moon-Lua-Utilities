@@ -3,6 +3,7 @@ _ = require("rx")
 _ = require("tiny")
 _ = require("json")
 _ = require("base64")
+_ = require("uuid")
 
 -- modules
 _ = require("component")
