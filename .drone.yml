@@ -4,7 +4,7 @@ workspace:
 
 pipeline:
   bundler:
-    image: docker.faavne.no/bzone/bztools:latest
+    image: docker.dock1.spaceway.network/bzone/bztools:latest
     when:
       event:
         - tag
@@ -12,14 +12,6 @@ pipeline:
       - mkdir -p /tmp/bzmoon
       - mkdir -p /tmp/bzmoon2
       - moonc /bzmoon/repo/src
-      - curl -O https://raw.githubusercontent.com/bjornbytes/RxLua/master/rx.lua
-      - curl -O https://raw.githubusercontent.com/bakpakin/tiny-ecs/master/tiny.lua
-      - curl -O https://raw.githubusercontent.com/rxi/json.lua/master/json.lua
-      - curl -O https://raw.githubusercontent.com/Tieske/uuid/master/src/uuid.lua
-      - mv rx.lua /tmp/bzmoon
-      - mv tiny.lua /tmp/bzmoon
-      - mv json.lua /tmp/bzmoon
-      - mv uuid.lua /tmp/bzmoon
       - cp /bzmoon/repo/extra/* /tmp/bzmoon
       - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
       - cp /bzmoon/repo/.squish /tmp/bzmoon
@@ -28,38 +20,18 @@ pipeline:
       - mv /tmp/bzmoon2/* /tmp/bzmoon
       - zip -j -r /bzmoon/bzmoon.zip /tmp/bzmoon
 
-  upload:
-    image: appleboy/drone-scp
-    host: faavne.no
-    username: root
-    secrets: [ssh_key]
-    key_path: /ssh/id_rsa
-    when:
-      event:
-        - tag
-    target:
-      - /tmp/
-    source:
-      - /bzmoon/bzmoon.zip
-    strip_components: 1
-
-    volumes:
-      - /root/.ssh/id_rsa:/ssh/id_rsa
-
-
-  release:
-    group: deploy
-    image: appleboy/drone-ssh
-    host: faavne.no
-    username: root
-    key_path: /ssh/id_rsa
-    secrets: [ssh_key]
-    when:
-      event:
-        - tag
-    script:
       - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_${DRONE_TAG}.zip || true
       - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_latest.zip || true
 
+
+  upload:
+    image: docker.dock1.spaceway.network/bzone/bztools:latest
+    when:
+      event:
+        - tag
     volumes:
-      - /root/.ssh/id_rsa:/ssh/id_rsa
+      - /srv/data/caddy/media/public/bzmoon:/builds
+    commands:
+      - cp -f /tmp/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
+      - ln -f /builds/bzmoon_${DRONE_TAG}.zip /builds/bzmoon_latest.zip
+
