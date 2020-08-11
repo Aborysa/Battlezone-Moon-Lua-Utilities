@@ -20,9 +20,6 @@ pipeline:
       - mv /tmp/bzmoon2/* /tmp/bzmoon
       - zip -j -r /bzmoon/bzmoon.zip /tmp/bzmoon
 
-      - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_${DRONE_TAG}.zip || true
-      - \cp -f /tmp/bzmoon.zip /mnt/primary/nginx-fs/files/public/bzmoon/bzmoon_latest.zip || true
-
 
   upload:
     image: docker.dock1.spaceway.network/bzone/bztools:latest
@@ -32,6 +29,6 @@ pipeline:
     volumes:
       - /srv/data/caddy/media/public/bzmoon:/builds
     commands:
-      - cp -f /tmp/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
+      - cp -f /bzmoon/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
       - ln -f /builds/bzmoon_${DRONE_TAG}.zip /builds/bzmoon_latest.zip
 
