@@ -18,7 +18,12 @@ pipeline:
       - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
       - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
       - mv /tmp/bzmoon2/* /tmp/bzmoon
-      - zip -j -r /bzmoon/bzmoon.zip /tmp/bzmoon
+      - rm /tmp/bzmoon/bzpre_1.5.dll
+      - rm /tmp/bzmoon/bzpre_bzr.dll
+      - cp /bzmoon/repo/extra/bzpre_1.5.dll /tmp/bzmoon/bzpre.dll
+      - zip -j -r /bzmoon/bzmoon_1.5.zip /tmp/bzmoon
+      - cp /bzmoon/repo/extra/bzpre_bzr.dll /tmp/bzmoon/bzpre.dll
+      - zip -j -r /bzmoon/bzmoon_bzr.zip /tmp/bzmoon
 
 
   upload:
@@ -29,6 +34,7 @@ pipeline:
     volumes:
       - /srv/data/caddy/media/public/bzmoon:/builds
     commands:
-      - cp -f /bzmoon/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
-      - ln -f /builds/bzmoon_${DRONE_TAG}.zip /builds/bzmoon_latest.zip
-
+      - cp -f /bzmoon/bzmoon_1.5.zip /builds/bzmoon_1.5_${DRONE_TAG}.zip
+      - ln -f /builds/bzmoon_1.5_${DRONE_TAG}.zip /builds/bzmoon_1.5_latest.zip
+      - cp -f /bzmoon/bzmoon_bzr.zip /builds/bzmoon_bzr_${DRONE_TAG}.zip
+      - ln -f /builds/bzmoon_bzr_${DRONE_TAG}.zip /builds/bzmoon_bzr_latest.zip
