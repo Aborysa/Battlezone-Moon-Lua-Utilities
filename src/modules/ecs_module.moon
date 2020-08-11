@@ -7,6 +7,7 @@ tiny = require("tiny")
 bztiny = require("bztiny")
 
 bzcomponents = require("bzcomp")
+bzsystems = require("bzsystems")
 
 Module = require("module")
 
@@ -15,6 +16,9 @@ event = require("event")
 import Subject from rx
 import namespace, OdfFile, getMeta, getFullName from utils
 import EcsWorld, requireAny, requireAll, Component, getComponentOdfs from bztiny
+import BzNetworkSystem, BzPlayerSystem, BzPositionSystem from bzsystems
+
+
 
 import BzHandleComponent, 
   BzBuildingComponent, 
@@ -44,7 +48,10 @@ import BzHandleComponent,
   BzArtifactComponent,
   BzStructureComponent,
   BzAnimstructureComponent,
-  BzBarracksComponent from bzcomponents
+  BzBarracksComponent, 
+  PositionComponent,
+  BzLocalComponent,
+  BzRemoteComponent from bzcomponents
 
 
 import EventDispatcher, Event from event
@@ -54,7 +61,7 @@ USE_PLAYER_COMPONENT = true
 USE_VEHICLE_COMPONENT = true
 
 classname_components = {
-  "recylcer": BzRecyclerComponent,
+  "recycler": BzRecyclerComponent,
   "factory": BzFactoryComponent,
   "armory": BzArmoryComponent,
   "wingman": BzWingmanComponent,
@@ -90,7 +97,14 @@ class EcsModule extends Module
   new: (...) =>
     super(...)
     @hmap = {}
-    @world = EcsWorld(EcsTestSystem) --tiny.world(EcsTestSystem)
+    @world = EcsWorld()
+    @world\addSystem(BzPositionSystem()\createSystem())
+    @world\addSystem(BzPlayerSystem()\createSystem())
+    --todo: network system is broken
+    --if IsNetGame()
+    --  @world\addSystem(BzNetworkSystem()\createSystem())
+
+
     @handlesToProcess = {}
     @dispatcher = EventDispatcher()
   
@@ -124,6 +138,26 @@ class EcsModule extends Module
         comp = component\addEntity(entity)
         file\getFields(header, cMeta.fields, comp)
 
+  -- moves components from old handle to new handle
+  -- should be called after new handle is created
+  replaceHandle: (old, new) =>
+      
+    @handlesToProcess[new] = nil
+    eid = @getEntityId(old)
+    entity = @getEntity(eid)
+    handleComponent = BzHandleComponent\getComponent(entity)
+    handleComponent.handle = new
+    
+    -- was not called early, remove entity that was created
+    if @getEntityId(new) ~= nil
+      neid = @getEntityId(new)
+      @world\removeEntity(neid)
+
+      
+    @hmap[old] = nil
+    @hmap[new] = eid
+
+    RemoveObject(old)
 
   _regHandle: (handle) =>
     @handlesToProcess[handle] = nil
@@ -131,10 +165,23 @@ class EcsModule extends Module
       eid, e = @world\createEntity()
       c1 = BzHandleComponent\addEntity(e)
       c1.handle = handle
+
+      c2 = PositionComponent\addEntity(e)
+      c2.position = GetPosition(handle)
+
+      if IsNetGame()
+        if IsLocal(handle)
+          BzLocalComponent\addEntity(e)
+        if IsRemote(handle)
+          BzRemoteComponent\addEntity(e)
+
+      else
+        BzLocalComponent\addEntity(e)
+
       @hmap[handle] = eid
       @_loadComponentsFromOdf(e, handle)
       @_setMiscComponents(e, handle)
-      @dispatcher\dispatch(Event("ECS_REG_HANDLE",@,nil,handle))
+      @dispatcher\dispatch(Event("ECS_REG_HANDLE",@,nil,handle, eid, e))
 
   _unregHandle: (handle) =>
     eid = @hmap[handle]
@@ -144,7 +191,7 @@ class EcsModule extends Module
         handleComponent = BzHandleComponent\getComponent(entity)
         if handleComponent and handleComponent.removeOnDeath then
           @world\removeEntity(eid)
-        @dispatcher\dispatch(Event("ECS_UNREG_HANDLE",@,nil,handle))
+        @dispatcher\dispatch(Event("ECS_UNREG_HANDLE",@,nil,handle, eid, entity))
       @hmap[handle] = nil
 
   getWorld: () =>
@@ -164,7 +211,7 @@ class EcsModule extends Module
 
   addObject: (handle) =>
     super\addObject(handle)
-    @_regHandle(handle)
+    @handlesToProcess[handle] = true
 
   deleteObject: (handle) =>
     super\deleteObject(handle)

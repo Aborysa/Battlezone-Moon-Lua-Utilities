@@ -17,7 +17,8 @@ class BzBuildingComponent extends Component
 class BzVehicleComponent extends Component
 class BzPersonComponent extends Component
 class BzPlayerComponent extends Component
-
+class BzLocalComponent extends Component
+class BzRemoteComponent extends Component
 -- class name components
 -- vehicles
 class BzRecyclerComponent extends Component
@@ -79,8 +80,6 @@ class ParticleEmitterComponent extends Component
       
 
 
-
-
 namespace("ecs.component", 
   BzHandleComponent, 
   BzBuildingComponent, 
@@ -110,7 +109,9 @@ namespace("ecs.component",
   BzStructureComponent,
   BzAnimstructureComponent,
   BzBarracksComponent,
-  ParticleEmitterComponent
+  ParticleEmitterComponent,
+  BzLocalComponent,
+  BzRemoteComponent
 )
 
 
@@ -144,5 +145,8 @@ return {
   :BzStructureComponent,
   :BzAnimstructureComponent,
   :BzBarracksComponent,
-  :ParticleEmitterComponent
+  :ParticleEmitterComponent,
+  :BzLocalComponent,
+  :BzRemoteComponent,
+  :PositionComponent
 }

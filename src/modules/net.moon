@@ -19,9 +19,6 @@ MAX_SENDSIZE = IsBz15() and 200 or 2000
 
 
 --serializes table so it can be sent regerdless of size
-
-
-
 netSerializeTable = (tbl, idgen=simpleIdGeneratorFactory(), keymap={}) ->
   id = idgen()
   keymap[id] = {}
@@ -461,7 +458,7 @@ class NetworkInterfaceManager
         @nextRequestId += 1
         requestId = @nextRequestId
         leaf.__socketSubject = AsyncSubject.create()
-        t = Timer(2, math.huge, @serviceManager)
+        t = Timer(5, math.huge, @serviceManager)
         args = {...}
         @requestSocketsIds[requestId] = {
           sub: leaf.__socketSubject,
@@ -570,9 +567,9 @@ class NetworkInterfaceManager
     @rxRate = math.max(@rxRate, 0)
     txRate = math.max(txRate, 0)
     
-
-    for i, v in ipairs(@requestSocketsIds)
-      v.timer\update(dtime)
+    --handled by runtime manager
+    --for i, v in ipairs(@requestSocketsIds)
+      --v.timer\update(dtime)
 
     for i, v in pairs(@allSockets)
       v\sendNext()

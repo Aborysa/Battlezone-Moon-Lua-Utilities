@@ -30,7 +30,7 @@ requireAny = (...) ->
 rejectAny = (...) ->
   return tiny.rejectAny(convertArgsToNames(...))
 
-rejectAny = (...) ->
+rejectAll = (...) ->
     return tiny.rejectAll(convertArgsToNames(...))
 
 
@@ -62,6 +62,8 @@ class Component
     return entity[cm]
 
   @removeEntity: (entity) =>
+    print("removing component from entity", entity, @getName())
+
     @dispatcher\dispatch(Event("ECS_COMPONENT_REMOVED", @, nil, entity))
     entity[@getName()] = nil
 
@@ -86,7 +88,7 @@ class EcsWorld
     @world.bzworld = @
     @entities = {}
     @nextId = 1
-    @TPS = 120
+    @TPS = 60
     @acc = 0
     @dispatcher = EventDispatcher()
 
@@ -94,9 +96,9 @@ class EcsWorld
     @acc += dtime
     for i=1, math.floor(@acc*@TPS)
       tiny.update(@world, 1/@TPS)
+      tiny.refresh(@world)
       @acc -= 1/@TPS
 
-    tiny.refresh(@world)
 
   createEntity: (eid) =>
     if not eid
@@ -120,7 +122,6 @@ class EcsWorld
   updateEntity: (eid) =>
     -- update entity after it has changed
     @updateTinyEntity(@getTinyEntity(eid))
-
 
   removeEntity: (eid) =>
     if(@entities[eid])

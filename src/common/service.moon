@@ -1,5 +1,3 @@
-
-
 rx = require("rx")
 
 import AsyncSubject, Observable from rx

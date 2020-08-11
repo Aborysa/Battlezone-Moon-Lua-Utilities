@@ -4,13 +4,16 @@ _ = require("tiny")
 _ = require("json")
 _ = require("base64")
 _ = require("uuid")
+_ = require("json")
+_ = require("serpent")
 
 -- modules
 _ = require("component")
 _ = require("net")
 _ = require("runtime")
 _ = require("ecs_module")
-_ = require("objective_m")
+_ = require("sock_m")
+_ = require("event")
 
 -- ecs
 _ = require("bzcomp")
@@ -33,12 +36,11 @@ _ = require("utils")
 _ = require("lvdf")
 _ = require("os")
 
--- objective
-_ = require("objective")
 
--- bzext
+-- bzpre
 _ = require("dloader")
-_ = require("bzext_m")
+_ = require("bzext")
+_ = require("bztt")
 
 -- bzutils
 _ = require("bzutils")

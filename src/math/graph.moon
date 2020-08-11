@@ -1,7 +1,7 @@
 
 utils = require("utils")
 
-
+print(utils)
 import simpleIdGeneratorFactory, applyMeta, getMeta from utils
 idGenerator = simpleIdGeneratorFactory()
 
@@ -222,6 +222,9 @@ AstarSearch = (start, goal, nodes, heurisitcsFunc) ->
     currentNode = table.remove(openSet, currentIndex)
     closedSet[currentNode] = true
     openMap[currentNode] = nil
+
+-- TODO: FIX
+    
     for neighbor, cost in pairs(currentNode\getNeighbors())
       if not closedSet[neighbor]
         tgScore = gScore[currentNode] + cost

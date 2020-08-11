@@ -66,6 +66,9 @@ export GetSimTime = () ->
 export SimulateTime = (dtime) ->
   simulatedTime += dtime
 
+export Hide = Hide or () ->
+
+
 export GetPathPointCount = GetPathPointCount or (path) ->
   p = GetPosition(path,0)
   lp = SetVector(0,0,0)
@@ -230,7 +233,7 @@ setMeta = (obj, key, value) ->
 
 getFullName = (cls) ->
   if cls.__name
-    return "#{getMeta(cls).namespace or ""}.#{cls.__name}"
+    return "#{getMeta(cls).namespace or ''}.#{cls.__name}"
 
 namespace = (name,...) ->
   for i,v in pairs({...})
@@ -360,8 +363,8 @@ class OdfHeader
     n = @getProperty("#{var}#{c}",...)
     while n and c < max
       table.insert(ret,n)
-      n = @getProperty("#{var}#{c}",...)
       c += 1
+      n = @getProperty("#{var}#{c}",...)
     return ret
 
   getTableOf: (parser, var, ...) =>

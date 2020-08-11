@@ -17,7 +17,7 @@ import EntityComponentSystemModule from ecs
 
 import ObjectiveModule from objective_m
 
-bz1Setup = (use_bzext=false) ->
+bz1Setup = (use_bzext=true, modid) ->
   serviceManager = service.ServiceManager()
   core = Module()
   event = core\useModule(EventDispatcherModule, serviceManager)
@@ -35,13 +35,17 @@ bz1Setup = (use_bzext=false) ->
   serviceManager\createService("bzutils.objective", objectiveManager)
 
   if use_bzext
-    bzext_m = require("bzext_m")
+    dloader = require("dloader")
+    dll_and_addon = not modid
 
-    bzext_m.initBzExt()
-    bzextModule = core\useModule(bzext_m.BzExtModule, serviceManager)
-    serviceManager\createService("bzutils.bzext", bzextModule)
-
-
+    assert(dloader.initLoader(modid, dll_and_addon, dll_and_addon), "Failed to init dll loader")
+    
+    sock = require("sock_m")
+    
+    
+    --bzext_m.initBzExt()
+    sockModule = core\useModule(sock.NetSocketModule, serviceManager)
+    serviceManager\createService("bzutils.socket", sockModule)
 
   return {
     :core,
@@ -50,11 +54,11 @@ bz1Setup = (use_bzext=false) ->
 
 bz2Setup = () ->
 
-defaultSetup = (use_bzext=false) ->
+defaultSetup = (use_bzext=true, modid) ->
   if IsBzr() or IsBz15()
-    return bz1Setup(use_bzext)
+    return bz1Setup(use_bzext, modid)
   elseif IsBz2
-    return bz2Setup(use_bzext)
+    return bz2Setup(use_bzext, modid)
 
 
 

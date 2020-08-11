@@ -4,3 +4,4 @@ cpl
 dist
 .vscode
 *.log
+session.sts
