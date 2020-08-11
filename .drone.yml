@@ -32,6 +32,6 @@ pipeline:
     volumes:
       - /srv/data/caddy/media/public/bzmoon:/builds
     commands:
-      - cp -f /tmp/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
+      - cp -f /bzmoon/bzmoon.zip /builds/bzmoon_${DRONE_TAG}.zip
       - ln -f /builds/bzmoon_${DRONE_TAG}.zip /builds/bzmoon_latest.zip
 
