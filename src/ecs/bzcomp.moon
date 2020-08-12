@@ -80,42 +80,7 @@ class ParticleEmitterComponent extends Component
       
 
 
-namespace("ecs.component", 
-  BzHandleComponent, 
-  BzBuildingComponent, 
-  BzVehicleComponent, 
-  BzPlayerComponent,
-  BzPersonComponent,
-  BzRecyclerComponent,
-  BzFactoryComponent,
-  BzArmoryComponent,
-  BzHowitzerComponent,
-  BzWalkerComponent,
-  BzConstructorComponent,
-  BzWingmanComponent,
-  BzGuntowerComponent,
-  BzTurretComponent,
-  BzScavengerComponent,
-  BzTugComponent,
-  BzMinelayerComponent,
-  BzHangarComponent,
-  BzSupplydepotComponent,
-  BzSiloComponent,
-  BzCommtowerComponent,
-  BzPortalComponent,
-  BzPowerplantComponent,
-  BzSignComponent,
-  BzArtifactComponent,
-  BzStructureComponent,
-  BzAnimstructureComponent,
-  BzBarracksComponent,
-  ParticleEmitterComponent,
-  BzLocalComponent,
-  BzRemoteComponent
-)
-
-
-return {
+components = {
   :BzHandleComponent,
   :BzBuildingComponent,
   :BzVehicleComponent,
@@ -150,3 +115,8 @@ return {
   :BzRemoteComponent,
   :PositionComponent
 }
+
+for i, v in pairs(components)
+  namespace("ecs.component", v)
+
+return components

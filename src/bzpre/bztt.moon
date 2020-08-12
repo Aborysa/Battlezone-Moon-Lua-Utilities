@@ -147,12 +147,13 @@ class ReadBuffer
 class TcpSocket
   new: (sock=socket.tcp(), timeout=0.005) =>
     @sock = sock
-    @sock\settimeout(timeout)
+    @timeoutValue = 0
+    @settimeout(timeout)
     @mode = "NONE"
     @socketSubject = Subject.create()
     @closed = false
     @sock\setoption("keepalive", true)
-
+  
   @connect: (...) =>
     sock = socket.tcp()
     res, err = sock\connect(...)
@@ -166,6 +167,13 @@ class TcpSocket
     if err
       return nil
     return TcpSocket(sock)
+  
+  settimeout: (v) =>
+    @sock\settimeout(v)
+    @timeoutValue = v
+
+  gettimeout: () =>
+    return @timeoutValue
   
 
   getstats: () =>
