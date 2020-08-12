@@ -195,7 +195,7 @@ end
 -- uuid.seed()
 -- print("here's a new uuid: ",uuid())
 function M.seed()
-  if package.loaded["socket"] and package.loaded["socket"].gettime then
+  if package.loaded["sockdl"] and package.loaded["sockdl"].gettime then
     return M.randomseed(package.loaded["socket"].gettime()*10000)
   else
     return M.randomseed(os.time())

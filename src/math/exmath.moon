@@ -141,7 +141,7 @@ class Area
     @path = path
     @handles = {}
     @enabled = false
-        --Calculate center and radius
+    --Calculate center and radius
     @_bounding()
     --register everyone that is inside
   

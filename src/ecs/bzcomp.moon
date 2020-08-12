@@ -47,6 +47,7 @@ class BzSignComponent extends Component
 class BzArtifactComponent extends Component
 class BzStructureComponent extends Component
 class BzAnimstructureComponent extends Component
+class BzBarracksComponent extends Component
 
 -- misc objects/powerups
 class BzCamerapodComponent extends Component
@@ -80,48 +81,12 @@ class ParticleEmitterComponent extends Component
       
 
 
-namespace("ecs.component", 
-  BzHandleComponent, 
-  BzBuildingComponent, 
-  BzVehicleComponent, 
-  BzPlayerComponent,
-  BzPersonComponent,
-  BzRecyclerComponent,
-  BzFactoryComponent,
-  BzArmoryComponent,
-  BzHowitzerComponent,
-  BzWalkerComponent,
-  BzConstructorComponent,
-  BzWingmanComponent,
-  BzGuntowerComponent,
-  BzTurretComponent,
-  BzScavengerComponent,
-  BzTugComponent,
-  BzMinelayerComponent,
-  BzHangarComponent,
-  BzSupplydepotComponent,
-  BzSiloComponent,
-  BzCommtowerComponent,
-  BzPortalComponent,
-  BzPowerplantComponent,
-  BzSignComponent,
-  BzArtifactComponent,
-  BzStructureComponent,
-  BzAnimstructureComponent,
-  BzBarracksComponent,
-  ParticleEmitterComponent,
-  BzLocalComponent,
-  BzRemoteComponent
-)
-
-
-return {
+components = {
   :BzHandleComponent,
   :BzBuildingComponent,
   :BzVehicleComponent,
   :BzPlayerComponent,
   :BzPersonComponent,
-  :IsPerson,
   :BzRecyclerComponent,
   :BzFactoryComponent,
   :BzArmoryComponent,
@@ -150,3 +115,8 @@ return {
   :BzRemoteComponent,
   :PositionComponent
 }
+
+for i, v in pairs(components)
+  namespace("ecs.component", v)
+
+return components

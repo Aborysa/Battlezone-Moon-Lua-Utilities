@@ -51,13 +51,13 @@ craftStates = {
 }
 
 
-getAppInfo = (id) ->
+getAppInfo = (id="301650") ->
   if not _appinfo
     _appinfo = bzpre.getAppInfo(id)
   return _appinfo
 
-getUserId = () -> 
-  getAppInfo()\gmatch('"LastOwner"%s*"(%d+)"')()
+getUserId = (id) -> 
+  getAppInfo(id)\gmatch('"LastOwner"%s*"(%d+)"')()
 
 
 -- producer specific functions
