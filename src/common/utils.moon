@@ -652,7 +652,6 @@ createClass = (name, methods, parent) ->
 
   return _class
 
-namespace("utils", Timer, Area)
 
 _switchMap = (obs, func) ->
   return Observable.create((observer) ->
@@ -676,7 +675,6 @@ _switchMap = (obs, func) ->
   :isIn,
   :getMeta,
   :applyMeta,
-  :Area,
   :OdfFile,
   :spawnInFormation,
   :spawnInFormation2,

@@ -13,6 +13,26 @@ class System
   createSystem: (f) =>
     return f(@)
 
+  @processingSystem: (...) =>
+    inst = @(...)
+    inst.__type = "processingSystem"
+    return tiny.processingSystem(inst)
+
+  @sortedSystem: (...) =>
+    inst = @(...)
+    inst.__type = "sortedSystem"
+    return tiny.sortedSystem(inst)
+
+  @sortedProcessingSystem: (...) =>
+    inst = @(...)
+    inst.__type = "sortedProcessingSystem"
+    return tiny.sortedProcessingSystem(inst)
+
+  @system: (...) =>
+    inst = @(...)
+    inst.__type = "system"
+    return tiny.sytem(inst)
+
 class BzPlayerSystem extends System
   filter: bztiny.requireAll(BzHandleComponent)
   process: (entity) =>
@@ -32,8 +52,7 @@ class BzPlayerSystem extends System
     super(tiny.processingSystem)
 
 class BzPositionSystem extends System
-  filter: (entity) => 
-    bztiny.rejectAny(BzBuildingComponent)(@,entity) and bztiny.requireAll(BzHandleComponent, PositionComponent)(@,entity) 
+  filter: bztiny.requireAll(BzHandleComponent, PositionComponent, bztiny.rejectAny(BzBuildingComponent)) 
   process: (entity) =>
     positionComponent = PositionComponent\getComponent(entity)
     handleComponent = BzHandleComponent\getComponent(entity)
@@ -74,7 +93,7 @@ class BzNetworkSystem extends System
 
 
 class ParticleSystem extends System
-  filter: () => bztiny.requireAll(ParticleEmitterComponent, PositionComponent)
+  filter: bztiny.requireAll(ParticleEmitterComponent, PositionComponent)
   process: (entity, dtime) =>
     particleComponent = ParticleEmitterComponent\getComponent(entity)
     particleComponent.nextExpl -= dtime
@@ -91,5 +110,6 @@ class ParticleSystem extends System
 return {
   :BzPlayerSystem,
   :BzPositionSystem,
-  :BzNetworkSystem
+  :BzNetworkSystem,
+  :System
 }

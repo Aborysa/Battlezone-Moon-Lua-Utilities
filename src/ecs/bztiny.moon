@@ -31,7 +31,7 @@ rejectAny = (...) ->
   return tiny.rejectAny(convertArgsToNames(...))
 
 rejectAll = (...) ->
-    return tiny.rejectAll(convertArgsToNames(...))
+  return tiny.rejectAll(convertArgsToNames(...))
 
 
 _component_odfs = setmetatable({},{})

@@ -138,6 +138,12 @@ class EcsModule extends Module
         comp = component\addEntity(entity)
         file\getFields(header, cMeta.fields, comp)
 
+
+  addSystem: (system) =>
+    @world\addSystem(system)
+    system.getEntityByHandle = (handle) -> @world @getEntityId(handle)
+    @dispatcher\dispatch(Event("ECS_ADD_SYSTEM",@,nil, system))
+
   -- moves components from old handle to new handle
   -- should be called after new handle is created
   replaceHandle: (old, new) =>
@@ -217,6 +223,10 @@ class EcsModule extends Module
     super\deleteObject(handle)
     @_unregHandle(handle)
 
+  getEntityByHandle: (handle) =>
+    id = @getEntityId(handle)
+    return @getEntity(id)
+    
   getEntityId: (handle) =>
     return @hmap[handle]
 
