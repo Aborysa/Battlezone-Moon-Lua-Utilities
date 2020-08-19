@@ -161,6 +161,9 @@ class TcpSocket
     
     return TcpSocket(sock)
 
+  @getTime: () =>
+    return socket.gettime()
+
   @bind: (...) =>
     sock = socket.tcp()
     res, err = sock\bind(...)

@@ -98,16 +98,18 @@ class EcsModule extends Module
     super(...)
     @hmap = {}
     @world = EcsWorld()
-    @world\addSystem(BzPositionSystem()\createSystem())
-    @world\addSystem(BzPlayerSystem()\createSystem())
+    @handlesToProcess = {}
+    @dispatcher = EventDispatcher()
+  
+    
+    @addSystem(BzPositionSystem()\createSystem())
+    @addSystem(BzPlayerSystem()\createSystem())
     --todo: network system is broken
     --if IsNetGame()
     --  @world\addSystem(BzNetworkSystem()\createSystem())
 
 
-    @handlesToProcess = {}
-    @dispatcher = EventDispatcher()
-  
+    
   getDispatcher: () =>
     @dispatcher
 
@@ -137,6 +139,12 @@ class EcsModule extends Module
       if use
         comp = component\addEntity(entity)
         file\getFields(header, cMeta.fields, comp)
+
+
+  addSystem: (system) =>
+    @world\addSystem(system)
+    system.getEntityByHandle = @\getEntityByHandle
+    @dispatcher\dispatch(Event("ECS_ADD_SYSTEM",@,nil, system))
 
   -- moves components from old handle to new handle
   -- should be called after new handle is created
@@ -216,6 +224,11 @@ class EcsModule extends Module
   deleteObject: (handle) =>
     super\deleteObject(handle)
     @_unregHandle(handle)
+
+  getEntityByHandle: (handle) =>
+    id = @getEntityId(handle)
+    if id ~= nil
+      return @getEntity(id)
 
   getEntityId: (handle) =>
     return @hmap[handle]

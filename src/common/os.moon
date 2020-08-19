@@ -1,2 +1,4 @@
 -- dummy file for uuid
-return {}
+return {
+  time: GetTimeNow
+}
