@@ -15,7 +15,7 @@ import EventDispatcherModule from event
 import EntityComponentSystemModule from ecs
 
 
-bz1Setup = (use_bzext=true, modid) ->
+bz1Setup = (use_bzext=true, modid, devid) ->
   serviceManager = service.ServiceManager()
   core = Module()
   event = core\useModule(EventDispatcherModule, serviceManager)
@@ -32,9 +32,7 @@ bz1Setup = (use_bzext=true, modid) ->
 
   if use_bzext
     dloader = require("dloader")
-    dll_and_addon = not modid
-
-    assert(dloader.initLoader(modid, dll_and_addon, dll_and_addon), "Failed to init dll loader")
+    assert(dloader.initLoader(modid, true, devid), "Failed to init dll loader")
     
     sock = require("sock_m")
     
@@ -50,11 +48,11 @@ bz1Setup = (use_bzext=true, modid) ->
 
 bz2Setup = () ->
 
-defaultSetup = (use_bzext=true, modid) ->
+defaultSetup = (use_bzext=true, modid, devid) ->
   if IsBzr() or IsBz15()
-    return bz1Setup(use_bzext, modid)
+    return bz1Setup(use_bzext, modid, devid)
   elseif IsBz2
-    return bz2Setup(use_bzext, modid)
+    return bz2Setup(use_bzext, modid, devid)
 
 
 

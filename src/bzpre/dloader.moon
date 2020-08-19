@@ -14,30 +14,33 @@ protectedRequire = (mod) ->
 
 asyncRequires = {}
 
-initLoader = (mod_id=0, dll=false, addon=false) ->
+initLoader = (mod_id=0, dll=false, dev_id=nil) ->
   if initSuccess
     return true
   package.cpath ..= ";.\\..\\..\\workshop\\content\\301650\\%s\\?.dll;.\\mods\\%s\\?.dll"\format(mod_id, mod_id)
   if dll
     package.cpath ..= ";./dll/?.dll"
-  if addon
     package.cpath ..= ";./testdll/?.dll"
-
+  if dev_id
+    package.cpath ..= ";./addon/#{dev_id}/?.dll"
+  
   bzpre = protectedRequire("bzpre")
   if bzpre
     dllp1 = bzpre.fullpath(".\\..\\..\\workshop\\content\\301650\\#{mod_id}")
     dllp2 = bzpre.fullpath(".\\mods\\#{mod_id}")
     
     package.cpath ..= ";#{dllp1}\\?.dll;#{dllp2}\\?.dll"
+    if dev_id
+      dllp3 = bzpre.fullpath(".\\addon\\#{dev_id}")
+      package.cpath ..= ";#{dllp3}\\?.dll"
+      bzpre.addPath(dllp3)
     
-    initSuccess = true
     
     bzpre.addPath(dllp1)
     bzpre.addPath(dllp2)
     
     if dll
       bzpre.addPath("./dll")
-    if addon
       bzpre.addPath("./testdll")
 
     initSuccess = true
