@@ -21,17 +21,27 @@ convertArgsToNames = (...) ->
 
   return unpack(t)
 
+
+-- Component namespaces may not be computed at the time of call to require functions
 requireAll = (...) ->
-  return tiny.requireAll(convertArgsToNames(...))
+  args = table.pack(...)
+  return (system, entity) -> 
+    tiny.requireAll(convertArgsToNames( unpack(args) ))(system, entity)
 
 requireAny = (...) ->
-  return tiny.requireAny(convertArgsToNames(...))
+  args = table.pack(...)
+  return (system, entity) -> 
+    return tiny.requireAny(convertArgsToNames( unpack(args) ))(system, entity)
 
 rejectAny = (...) ->
-  return tiny.rejectAny(convertArgsToNames(...))
+  args = table.pack(...)
+  return (system, entity) -> 
+    return tiny.rejectAny(convertArgsToNames( unpack(args) ))(system, entity)
 
 rejectAll = (...) ->
-  return tiny.rejectAll(convertArgsToNames(...))
+  args = table.pack(...)
+  return (system, entity) ->
+    return tiny.rejectAll(convertArgsToNames( unpack(args) ))(system, entity)
 
 
 _component_odfs = setmetatable({},{})

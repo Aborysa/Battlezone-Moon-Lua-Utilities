@@ -144,6 +144,7 @@ class EcsModule extends Module
   addSystem: (system) =>
     @world\addSystem(system)
     system.getEntityByHandle = @\getEntityByHandle
+    system.registerHandle = @\_regHandle
     @dispatcher\dispatch(Event("ECS_ADD_SYSTEM",@,nil, system))
 
   -- moves components from old handle to new handle
