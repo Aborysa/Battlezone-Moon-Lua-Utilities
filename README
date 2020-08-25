@@ -1,0 +1,6 @@
+bzutils - a set of utilities for modding battlezone
+
+Includes utilities for
+ - managing game objects using tinyECS
+ - network sockets for communication between game clients
+ - 'async' sockets wrapping LuaSockets for tcp connection
