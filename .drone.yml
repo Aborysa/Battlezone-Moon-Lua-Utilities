@@ -1,40 +1,49 @@
 workspace:
-  base: /bzmoon
-  path: repo/${DRONE_REPO_SLUG}
+  path: /bzmoon
 
-pipeline:
-  bundler:
-    image: docker.dock1.spaceway.network/bzone/bztools:latest
-    when:
-      event:
-        - tag
-    commands:
-      - mkdir -p /tmp/bzmoon
-      - mkdir -p /tmp/bzmoon2
-      - moonc /bzmoon/repo/src
-      - cp /bzmoon/repo/extra/* /tmp/bzmoon
-      - find /bzmoon/repo/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
-      - cp /bzmoon/repo/.squish /tmp/bzmoon
-      - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
-      - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
-      - mv /tmp/bzmoon2/* /tmp/bzmoon
-      - rm /tmp/bzmoon/bzpre_1.5.dll
-      - rm /tmp/bzmoon/bzpre_bzr.dll
-      - cp /bzmoon/repo/extra/bzpre_1.5.dll /tmp/bzmoon/bzpre.dll
-      - zip -j -r /bzmoon/bzmoon_1.5.zip /tmp/bzmoon
-      - cp /bzmoon/repo/extra/bzpre_bzr.dll /tmp/bzmoon/bzpre.dll
-      - zip -j -r /bzmoon/bzmoon_bzr.zip /tmp/bzmoon
+kind: pipeline
+name: default
 
+steps:
+- name: bundle
+  image: thejanne/bztools:latest
+  commands:
+  when:
+    branch:
+    - master
+    event:
+    - tag
+  commands:
+    - mkdir -p /tmp/bzmoon
+    - mkdir -p /tmp/bzmoon2
+    - mkdir -p /build
+    - moonc /bzmoon/src
+    - cp /bzmoon/extra/* /tmp/bzmoon
+    - find /bzmoon/src -type f -name "*.lua" -exec cp {} /tmp/bzmoon \;
+    - cp /bzmoon/.squish /tmp/bzmoon
+    - cp -r /tmp/bzmoon/. /tmp/bzmoon2/
+    - python3 /bztools/luaSquish.py /tmp/bzmoon2 -r
+    - mv /tmp/bzmoon2/* /tmp/bzmoon
+    - rm /tmp/bzmoon/bzpre_1.5.dll
+    - rm /tmp/bzmoon/bzpre_bzr.dll
+    - cp /bzmoon/extra/bzpre_1.5.dll /tmp/bzmoon/bzpre.dll
+    - zip -j -r /build/bzmoon_1.5_${DRONE_TAG}.zip /tmp/bzmoon
+    - cp /bzmoon/extra/bzpre_bzr.dll /tmp/bzmoon/bzpre.dll
+    - zip -j -r /build/bzmoon_bzr_${DRONE_TAG}.zip /tmp/bzmoon
 
-  upload:
-    image: docker.dock1.spaceway.network/bzone/bztools:latest
-    when:
-      event:
-        - tag
-    volumes:
-      - /srv/data/caddy/media/public/bzmoon:/builds
-    commands:
-      - cp -f /bzmoon/bzmoon_1.5.zip /builds/bzmoon_1.5_${DRONE_TAG}.zip
-      - ln -f /builds/bzmoon_1.5_${DRONE_TAG}.zip /builds/bzmoon_1.5_latest.zip
-      - cp -f /bzmoon/bzmoon_bzr.zip /builds/bzmoon_bzr_${DRONE_TAG}.zip
-      - ln -f /builds/bzmoon_bzr_${DRONE_TAG}.zip /builds/bzmoon_bzr_latest.zip
+- name: upload
+  image: plugins/s3
+  settings:
+    access_key:
+      from_secret: access_key
+    secret_key:
+      from_secret: secret_key
+    source: /build/*.zip
+    target: /bzmoon
+    acl: public-read
+    endpoint: https://buildstorage.s3.nl-ams.scw.cloud
+    path_style: true
+
+  when:
+    event:
+      - tag
